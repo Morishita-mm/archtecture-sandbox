@@ -1,0 +1,105 @@
+# ==============================================================================
+# Project Configuration Reference
+# ==============================================================================
+# プロジェクト名: architecture-sandbox
+# 最終更新: 2025-12-05 (開発環境構築完了時点)
+# 目的: コンテナ名、ポート番号、パス、環境変数の「正」となる情報の管理
+# ==============================================================================
+
+architecture:
+  type: "Microservices (Docker Compose / Dev Container)"
+  root_workspace: "/workspace"  # コンテナ内でのプロジェクトルートパス
+
+# ------------------------------------------------------------------------------
+# 1. Services (コンテナ構成)
+# ------------------------------------------------------------------------------
+services:
+  # --- Backend Service ---
+  backend:
+    technology: "Rust (Axum + Tokio)"
+    container_name: "app-backend"   # docker ps で表示される名前
+    service_name: "backend"         # docker-compose内での参照名
+    
+    paths:
+      host_dir: "./backend"
+      container_workdir: "/workspace/backend"
+    
+    networking:
+      port_internal: 8080           # コンテナがListenしているポート
+      port_external: 8080           # ホスト(ブラウザ)からアクセスするポート
+      base_url_browser: "http://localhost:8080"  # ブラウザ(Frontend)からのアクセス用
+      base_url_internal: "http://backend:8080"   # 他コンテナからのアクセス用
+    
+    commands:
+      dev_start: "cargo watch -x run"
+      build: "cargo build"
+
+  # --- Frontend Service ---
+  frontend:
+    technology: "React (Vite + TypeScript)"
+    container_name: "app-frontend"
+    service_name: "frontend"
+    
+    paths:
+      host_dir: "./frontend"
+      container_workdir: "/workspace/frontend"
+    
+    networking:
+      port_internal: 5173
+      port_external: 5173
+      base_url: "http://localhost:5173"
+    
+    commands:
+      # 初回起動時に npm install が自動実行される設定になっている
+      dev_start: "npm run dev -- --host"
+      install: "npm install"
+
+  # --- Database Service ---
+  database:
+    technology: "PostgreSQL 15 (Alpine)"
+    container_name: "app-db"
+    service_name: "db"  # 【重要】Backendから接続する際のホスト名
+    
+    networking:
+      port_internal: 5432
+      port_external: 5432 # ホストのDBクライアントから接続する場合
+    
+    credentials:
+      user: "user"
+      password: "password"
+      db_name: "arch_db"
+    
+    connection_strings:
+      # Rust(Backend)から接続用 (ホスト名は 'db')
+      internal_url: "postgres://user:password@db:5432/arch_db"
+      # ホストPCのGUIツール(TablePlusなど)から接続用
+      external_url: "postgres://user:password@localhost:5432/arch_db"
+
+# ------------------------------------------------------------------------------
+# 2. Files & Configuration (設定ファイル)
+# ------------------------------------------------------------------------------
+configuration_files:
+  docker_compose:
+    production: "./compose.yaml"      # 基本設定 (ポート, DB定義)
+    development: "./compose.dev.yaml" # 開発用上書き (マウント, コマンド)
+  
+  dev_container:
+    config: "./.devcontainer/devcontainer.json"
+    
+  rust:
+    manifest: "./backend/Cargo.toml"
+    
+  react:
+    config: "./frontend/vite.config.ts"
+
+# ------------------------------------------------------------------------------
+# 3. Known Behaviors (挙動のメモ)
+# ------------------------------------------------------------------------------
+behaviors:
+  hot_reload:
+    backend: "有効 (cargo-watchにより、ファイル保存時に自動再ビルド)"
+    frontend: "有効 (Vite HMRにより、ファイル保存時にブラウザ即時反映)"
+  
+  volume_mounts:
+    backend_target: "名前付きボリューム 'target-cache' に永続化 (ホストには見えない)"
+    frontend_node_modules: "名前付きボリューム 'node_modules' に永続化 (ホスト側は空に見える)"
