@@ -1,0 +1,51 @@
+project_summary:
+  name: 対話型システムアーキテクチャ設計練習プラットフォーム
+  concept:
+    core_value: 「要件定義(交渉) → 設計(作図) → 評価(FB)」のプロセスを一気通貫で学ぶ。
+    target: システムデザイン面接対策者、設計スキルを上げたい中級エンジニア。
+    differentiation:
+      - As-Is(既存)ではなくTo-Be(新規)の設計。
+      - 具体的なツール名(Redis等)より役割(Cache等)を重視するマクロ視点。
+      - AIによる即時の採点とフィードバック機能。
+
+tech_stack:
+  frontend:
+    framework: React + TypeScript
+    key_library: React Flow (ノードベースUI構築に必須)
+    learning_status: 未習得（学習の最重要領域）
+  backend:
+    language: Rust (Axum or Actix-web)
+    rationale: ユーザーの興味関心(Rust/非同期/DDD)および堅牢性。
+  ai_integration:
+    provider: OpenAI API (GPT-4o)
+    roles:
+      - Client Persona: 要件定義チャットの相手。
+      - Evaluator: 設計図と要件を照らし合わせた採点・指摘。
+  infrastructure:
+    platform: AWS (ECS or App Runner), Docker
+    goal: AWS認定(Cloud Practitioner/Associate)取得に向けた実務経験。
+
+mvp_requirements:
+  workflow:
+    1_Scenario: プリセット問題（URL短縮など）の選択。
+    2_Chat: AI顧客と対話し、RPSや整合性などの非機能要件を確定させる。
+    3_Design: 抽象コンポーネント(LB, RDBMS, NoSQL等)を配置・接続。
+    4_Evaluate: 要件に対する適合度、スケーラビリティ、オーバーエンジニアリングを判定。
+  data_structure_draft:
+    lang: Rust
+    model: >
+      struct Architecture { nodes: Vec<Node>, edges: Vec<Edge> }
+      enum ComponentRole { LoadBalancer, AppServer, RDBMS, NoSQL, Cache, Queue, etc. }
+  out_of_scope:
+    - ユーザー認証機能
+    - リアルタイム共同編集
+    - 複雑なネットワーク設定(VPC/Subnet)
+
+current_status:
+  phase: MVP要件定義完了
+  user_profile: Java/Spring(Silver), Rust(学習中), OOP/DDD(高理解), AWS(学習開始)
+  pending_decision:
+    next_action: 実装の着手順序の決定
+    options:
+      A: Frontend先行 (React Flow環境構築とUIプロトタイプ作成)
+      B: Backend先行 (Rustでのデータ構造定義とAI評価ロジック実装)
