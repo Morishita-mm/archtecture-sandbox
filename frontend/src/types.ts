@@ -14,3 +14,8 @@ export interface EdgeData {
   source: string;
   target: string;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  content: string;
+}

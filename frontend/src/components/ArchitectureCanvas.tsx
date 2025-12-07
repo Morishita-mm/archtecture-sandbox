@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -14,11 +14,12 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { EvaluationModal } from "./EvaluatinModal";
-import type { EvaluationResult } from "../types";
+import { EvaluationModal } from "./EvaluationModal";
+import type { EvaluationResult, ChatMessage } from "../types";
 import { SCENARIOS } from "../scenarios";
 import { Header } from "./Header";
-import { ChatInterface } from "./ChatInterface"; // 追加
+import { ChatInterface } from "./ChatInterface";
+import { MemoPad } from "./MemoPad";
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
@@ -33,18 +34,55 @@ function ArchitectureFlow() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
-  // --- モーダル用のState追加 ---
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [evaluationResult, setEvaluationResult] =
-    useState<EvaluationResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // ローディング表示用
+
+  // --- アプリケーションの状態 ---
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     SCENARIOS[0].id
   );
-  const [activeTab, setActiveTab] = useState<"chat" | "design">("chat"); // 最初はチャットからスタート
+  const [activeTab, setActiveTab] = useState<"chat" | "design">("chat");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [memo, setMemo] = useState<string>("");
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [evaluationResult, setEvaluationResult] =
+    useState<EvaluationResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 現在のシナリオオブジェクト
   const currentScenario =
     SCENARIOS.find((s) => s.id === selectedScenarioId) || SCENARIOS[0];
+
+  // シナリオ変更時の処理（履歴とメモのリセット）
+  const handleScenarioChange = (newId: string) => {
+    setSelectedScenarioId(newId);
+
+    const targetScenario =
+      SCENARIOS.find((s) => s.id === newId) || SCENARIOS[0];
+
+    // チャット履歴をリセットし、最初の挨拶を入れる
+    setChatMessages([
+      {
+        role: "model",
+        content: `こんにちは。「${targetScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
+      },
+    ]);
+
+    // メモもリセット
+    setMemo("");
+  };
+
+  // 初回起動時の挨拶
+  useEffect(() => {
+    // まだメッセージがない場合のみ初期化
+    if (chatMessages.length === 0) {
+      setChatMessages([
+        {
+          role: "model",
+          content: `こんにちは。「${currentScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
+        },
+      ]);
+    }
+  }, []); // 初回のみ実行
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -76,18 +114,16 @@ function ArchitectureFlow() {
     [screenToFlowPosition, setNodes]
   );
 
-  // バックエンドAPIをコールする処理
   const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
     const currentEdges = getEdges();
 
-    // 何も配置されていない場合は警告
     if (currentNodes.length === 0) {
       alert("コンポーネントを配置してください");
       return;
     }
 
-    setIsLoading(true); // ローディング開始
+    setIsLoading(true);
 
     const designData = {
       scenario: currentScenario,
@@ -103,12 +139,9 @@ function ArchitectureFlow() {
     };
 
     try {
-      // 開発環境のURL
       const response = await fetch("http://localhost:8080/api/evaluate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(designData),
       });
 
@@ -117,17 +150,13 @@ function ArchitectureFlow() {
       }
 
       const result: EvaluationResult = await response.json();
-
-      // 結果をセットしてモーダルを開く
       setEvaluationResult(result);
       setIsModalOpen(true);
     } catch (error) {
       console.error("API Error:", error);
-      alert(
-        "評価中にエラーが発生しました。バックエンドのログを確認してください。"
-      );
+      alert("評価中にエラーが発生しました。");
     } finally {
-      setIsLoading(false); // ローディング終了
+      setIsLoading(false);
     }
   }, [getNodes, getEdges, currentScenario]);
 
@@ -140,11 +169,13 @@ function ArchitectureFlow() {
         height: "100vh",
       }}
     >
+      {/* 1. ヘッダー */}
       <Header
         selectedScenarioId={selectedScenarioId}
-        onScenarioChange={setSelectedScenarioId}
+        onScenarioChange={handleScenarioChange}
       />
 
+      {/* 2. タブバー */}
       <div style={tabBarStyle}>
         <button
           style={activeTab === "chat" ? activeTabStyle : tabStyle}
@@ -160,88 +191,106 @@ function ArchitectureFlow() {
         </button>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
-        {/* チャットモード */}
-        {activeTab === "chat" && (
-          <div style={{ width: "100%", height: "100%" }}>
-            <ChatInterface scenario={currentScenario} />
-          </div>
-        )}
-
-        {/* 設計モード (既存のキャンバス部分) */}
-        {/* Canvasは非表示時も状態を維持したいので display: none で制御するのがコツです */}
+      {/* 3. メインコンテンツ + メモ帳 */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* コンテンツエリア (チャット/キャンバス) */}
         <div
           style={{
-            display: activeTab === "design" ? "flex" : "none",
-            width: "100%",
-            height: "100%",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
           }}
         >
-          <Sidebar />
+          {/* A. チャットモード */}
+          {activeTab === "chat" && (
+            <div style={{ width: "100%", height: "100%" }}>
+              <ChatInterface
+                scenario={currentScenario}
+                messages={chatMessages}
+                onSendMessage={setChatMessages}
+              />
+            </div>
+          )}
+
+          {/* B. 設計モード (非表示時は display: none で維持) */}
           <div
-            className="reactflow-wrapper"
-            ref={reactFlowWrapper}
-            style={{ flex: 1, height: "100%", position: "relative" }}
+            style={{
+              display: activeTab === "design" ? "flex" : "none",
+              width: "100%",
+              height: "100%",
+            }}
           >
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              fitView
+            <Sidebar />
+            <div
+              className="reactflow-wrapper"
+              ref={reactFlowWrapper}
+              style={{ flex: 1, height: "100%", position: "relative" }}
             >
-              <Background />
-              <Controls />
-              <MiniMap />
-
-              <Panel position="top-right">
-                <button
-                  onClick={onEvaluate}
-                  disabled={isLoading}
-                  style={{
-                    padding: "10px 20px",
-                    fontSize: "16px",
-                    backgroundColor: isLoading ? "#ccc" : "#4CAF50",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: isLoading ? "wait" : "pointer",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                  }}
-                >
-                  {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
-                </button>
-              </Panel>
-            </ReactFlow>
-
-            <EvaluationModal
-              isOpen={isModalOpen}
-              onClose={() => setIsModalOpen(false)}
-              result={evaluationResult}
-            />
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                fitView
+              >
+                <Background />
+                <Controls />
+                <MiniMap />
+                <Panel position="top-right">
+                  <button
+                    onClick={onEvaluate}
+                    disabled={isLoading}
+                    style={{
+                      padding: "10px 20px",
+                      fontSize: "16px",
+                      backgroundColor: isLoading ? "#ccc" : "#4CAF50",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "5px",
+                      cursor: isLoading ? "wait" : "pointer",
+                      boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    {isLoading ? "AIが評価中..." : "設計完了（評価する）"}
+                  </button>
+                </Panel>
+              </ReactFlow>
+              <EvaluationModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                result={evaluationResult}
+              />
+            </div>
           </div>
         </div>
+
+        {/* 4. メモ帳 (常に右端に表示) */}
+        <MemoPad value={memo} onChange={setMemo} />
       </div>
     </div>
   );
 }
 
-// --- Styles for Tabs ---
+// --- export ---
+export function ArchitectureCanvas() {
+  return (
+    <ReactFlowProvider>
+      <ArchitectureFlow />
+    </ReactFlowProvider>
+  );
+}
+
+// --- Styles ---
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
   backgroundColor: "#f5f5f5",
   borderBottom: "1px solid #ddd",
   padding: "0 20px",
+  flexShrink: 0,
 };
 
 const tabStyle: React.CSSProperties = {
@@ -260,11 +309,3 @@ const activeTabStyle: React.CSSProperties = {
   fontWeight: "bold",
   borderBottom: "3px solid #2196F3",
 };
-
-export function ArchitectureCanvas() {
-  return (
-    <ReactFlowProvider>
-      <ArchitectureFlow />
-    </ReactFlowProvider>
-  );
-}
