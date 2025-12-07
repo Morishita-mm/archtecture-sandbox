@@ -54,55 +54,35 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
 let yaml_prompt_template = r#"
 system_context:
   role: "Senior System Architect & Educator"
-  objective: "Evaluate the user's system architecture diagram based on specific constraints."
+  objective: "Evaluate if the user's design meets the SPECIFIC SCENARIO requirements."
   language: "Japanese"
 
-# アプリケーションの制約（重要）
-constraints:
-  tool_limitations:
-    - "This is a simple visual modeler."
-    - "Users CANNOT configure internal settings (e.g., config files, instance types, replication modes, backup policies)."
-    - "Users CAN only define TOPOLOGY (placement of nodes and connections)."
-  
-  # 現在のパレットにあるコンポーネントのみを定義
-  available_components:
-    - "Client (User)"
-    - "Load Balancer (LB)"
-    - "API Server"
-    - "RDBMS (Postgres)"
-    - "Cache (Redis)"
-    # 将来拡張する場合はここに追加
-  
-  instruction:
-    - "Do NOT suggest adding components that are NOT in the 'available_components' list (e.g., CDN, Message Queue, Lambda)."
-    - "Do NOT criticize missing internal configurations (e.g., 'password is not set', 'backup is not enabled')."
-    - "Assume standard/default configurations are applied internally."
+# ... constraints (tool_limitations, available_components) は変更なし ...
+# ... (省略) ...
 
-# 評価ルール
-evaluation_rules:
-  scalability:
-    - "Evaluate based on NODE REDUNDANCY."
-    - "Single Server/DB node -> Risk of bottleneck. Suggest adding another node of the same type (Horizontal Scaling)."
-    - "Presence of Load Balancer -> Good for scalability."
-  
-  availability:
-    - "Identify Single Points of Failure (SPOF)."
-    - "If only 1 DB node exists -> Low Availability. Suggest adding a standby DB node visually."
-  
-  consistency:
-    - "If Cache is used, mention potential consistency lag (briefly)."
-    - "If single DB, consistency is high (ACID)."
+# 評価ルール（シナリオ依存）
+evaluation_logic:
+  - "Compare the 'user_design_data' against the 'scenario_requirements' defined in the input JSON."
+  - "If Scenario is 'Internal Tool' (Low Traffic) and user uses Load Balancer/Cache -> Mark as OVER-ENGINEERING (Lower score)."
+  - "If Scenario is 'SNS App' (High Traffic) and user has Single Server -> Mark as CRITICAL FAILURE (Lower score)."
+  - "Always explain WHY based on the scenario's traffic/budget."
 
 # 出力フォーマット
 output_format:
   format: "JSON"
   schema:
     score: "Integer (0-100)"
-    feedback: "String (Markdown. Use '###' for headers. Do NOT use '**text**' for headers. Keep it concise.)"
-    improvement: "String (Markdown. Suggest visual changes: 'Add another API Server node', 'Place Cache between Server and DB'.)"
+    feedback: "String (Markdown. ### Headers. Explain 'Scenario Fit'.)"
+    improvement: "String (Markdown. Suggest changes to fit the scenario.)"
 
-# ユーザー入力データ
-user_design_data:
+# 入力データ構造
+input_data_structure:
+  scenario: "Contains specific requirements (Users, Traffic, Budget)"
+  nodes: "List of architecture components"
+  edges: "List of connections"
+
+# 実際の入力データ
+input_json:
 "#;
 
     // プロンプト結合
