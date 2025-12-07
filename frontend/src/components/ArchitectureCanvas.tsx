@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -14,6 +14,8 @@ import ReactFlow, {
 
 import 'reactflow/dist/style.css';
 import { Sidebar } from './Sidebar';
+import { EvaluationModal } from './EvaluatinModal';
+import type { EvaluationResult } from '../types';
 
 let id = 0;
 const getId = () => `dndnode_${id++}`;
@@ -28,6 +30,10 @@ function ArchitectureFlow() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
+  // --- モーダル用のState追加 ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // ローディング表示用
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -60,9 +66,17 @@ function ArchitectureFlow() {
   );
 
 // バックエンドAPIをコールする処理
-  const onEvaluate = useCallback(async () => { // asyncにする
+const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
     const currentEdges = getEdges();
+
+    // 何も配置されていない場合は警告
+    if (currentNodes.length === 0) {
+      alert("コンポーネントを配置してください");
+      return;
+    }
+
+    setIsLoading(true); // ローディング開始
 
     const designData = {
       nodes: currentNodes.map(n => ({
@@ -76,10 +90,8 @@ function ArchitectureFlow() {
       }))
     };
 
-    console.log("Sending data to backend...", designData);
-
     try {
-      // 開発環境のURL (project-info.yaml参照)
+      // 開発環境のURL
       const response = await fetch('http://localhost:8080/api/evaluate', {
         method: 'POST',
         headers: {
@@ -92,15 +104,17 @@ function ArchitectureFlow() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
-      console.log("Response from Backend:", result);
+      const result: EvaluationResult = await response.json();
       
-      // バックエンドからの返事（モック）を表示
-      alert(`評価スコア: ${result.score}\nAIからのコメント: ${result.feedback}`);
+      // 結果をセットしてモーダルを開く
+      setEvaluationResult(result);
+      setIsModalOpen(true);
 
     } catch (error) {
       console.error("API Error:", error);
-      alert("バックエンドへの送信に失敗しました。コンソールを確認してください。");
+      alert("評価中にエラーが発生しました。バックエンドのログを確認してください。");
+    } finally {
+      setIsLoading(false); // ローディング終了
     }
   }, [getNodes, getEdges]);
 
@@ -122,26 +136,28 @@ function ArchitectureFlow() {
           <Controls />
           <MiniMap />
           
-          {/* 追加: 右上にボタンを配置 */}
           <Panel position="top-right">
             <button 
               onClick={onEvaluate}
+              disabled={isLoading} // ロード中は押せないように
               style={{
-                padding: '10px 20px',
-                fontSize: '16px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                // ... (既存のスタイル) ...
+                backgroundColor: isLoading ? '#ccc' : '#4CAF50', // ロード中はグレー
+                cursor: isLoading ? 'wait' : 'pointer',
               }}
             >
-              設計完了（評価する）
+              {isLoading ? 'AIが評価中...' : '設計完了（評価する）'}
             </button>
           </Panel>
-          
         </ReactFlow>
+
+        {/* --- モーダルを追加 --- */}
+        <EvaluationModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          result={evaluationResult} 
+        />
+
       </div>
     </div>
   );

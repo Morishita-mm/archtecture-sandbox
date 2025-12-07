@@ -51,22 +51,64 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
     );
 
     // プロンプトの作成
+let yaml_prompt_template = r#"
+system_context:
+  role: "Senior System Architect & Educator"
+  objective: "Evaluate the user's system architecture diagram based on specific constraints."
+  language: "Japanese"
+
+# アプリケーションの制約（重要）
+constraints:
+  tool_limitations:
+    - "This is a simple visual modeler."
+    - "Users CANNOT configure internal settings (e.g., config files, instance types, replication modes, backup policies)."
+    - "Users CAN only define TOPOLOGY (placement of nodes and connections)."
+  
+  # 現在のパレットにあるコンポーネントのみを定義
+  available_components:
+    - "Client (User)"
+    - "Load Balancer (LB)"
+    - "API Server"
+    - "RDBMS (Postgres)"
+    - "Cache (Redis)"
+    # 将来拡張する場合はここに追加
+  
+  instruction:
+    - "Do NOT suggest adding components that are NOT in the 'available_components' list (e.g., CDN, Message Queue, Lambda)."
+    - "Do NOT criticize missing internal configurations (e.g., 'password is not set', 'backup is not enabled')."
+    - "Assume standard/default configurations are applied internally."
+
+# 評価ルール
+evaluation_rules:
+  scalability:
+    - "Evaluate based on NODE REDUNDANCY."
+    - "Single Server/DB node -> Risk of bottleneck. Suggest adding another node of the same type (Horizontal Scaling)."
+    - "Presence of Load Balancer -> Good for scalability."
+  
+  availability:
+    - "Identify Single Points of Failure (SPOF)."
+    - "If only 1 DB node exists -> Low Availability. Suggest adding a standby DB node visually."
+  
+  consistency:
+    - "If Cache is used, mention potential consistency lag (briefly)."
+    - "If single DB, consistency is high (ACID)."
+
+# 出力フォーマット
+output_format:
+  format: "JSON"
+  schema:
+    score: "Integer (0-100)"
+    feedback: "String (Markdown. Use '###' for headers. Do NOT use '**text**' for headers. Keep it concise.)"
+    improvement: "String (Markdown. Suggest visual changes: 'Add another API Server node', 'Place Cache between Server and DB'.)"
+
+# ユーザー入力データ
+user_design_data:
+"#;
+
+    // プロンプト結合
     let prompt = format!(
-        r#"
-あなたはシステムアーキテクトの専門家です。
-以下のJSONデータは、ユーザーが設計したシステムアーキテクチャ図の構造です。
-この構成を「スケーラビリティ」「可用性」「整合性」の観点で評価してください。
-
-JSONデータ:
-{}
-
-以下のJSONフォーマットのみで回答してください（Markdown記法は不要です）:
-{{
-  "score": 0〜100の整数,
-  "feedback": "評価コメント（日本語）",
-  "improvement": "具体的な改善案（日本語）"
-}}
-"#,
+        "{}\n{}", 
+        yaml_prompt_template, 
         json_data
     );
 
