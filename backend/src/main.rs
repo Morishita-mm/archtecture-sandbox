@@ -1,5 +1,8 @@
 mod models;
 mod gemini;
+mod domain;
+// mod infrastructure;
+// mod presentation;
 
 use axum::{
     extract::State,
