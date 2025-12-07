@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env;
 
-use crate::models::{ChatMessage, ChatRequest};
+use crate::domain::model::chat::ChatRequest;
 
 // --- Gemini APIのリクエスト形式 (構造体定義) ---
 #[derive(Serialize)]

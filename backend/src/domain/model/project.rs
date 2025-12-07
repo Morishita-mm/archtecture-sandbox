@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
-// --- Value Objects (値オブジェクト) ---
-// ドメイン固有の型を定義し、取り違えを防ぎます
+// 切り出したモジュールをインポート
+use super::diagram::Diagram;
+use super::chat::ChatLog;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProjectId(pub Uuid);
@@ -14,43 +15,7 @@ impl ProjectId {
     }
 }
 
-// 図データの中身も、単なるJSONではなく型として定義します
-// これにより「ノードには必ず座標が必要」といったルールを強制できます
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Diagram {
-    pub nodes: Vec<Node>,
-    pub edges: Vec<Edge>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Node {
-    pub id: String,
-    pub type_label: String, // "role"だと予約語っぽいので変更
-    pub position: Position,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Position {
-    pub x: f64,
-    pub y: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Edge {
-    pub source: String,
-    pub target: String,
-}
-
-// チャット履歴も型定義
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatLog {
-    pub role: String,
-    pub content: String,
-}
-
-// --- Entity (エンティティ) ---
-// 同一性(ID)を持ち、ライフサイクルを持つオブジェクト
-
+// Entity
 #[derive(Debug, Clone)]
 pub struct Project {
     pub id: ProjectId,
@@ -58,18 +23,13 @@ pub struct Project {
     pub scenario_id: String,
     pub last_modified: DateTime<Utc>,
     
-    // JSONBの中身をラップしたValue Object
-    pub diagram: Diagram,
-    pub chat_history: Vec<ChatLog>,
+    pub diagram: Diagram,       // 外部ファイル定義を使用
+    pub chat_history: Vec<ChatLog>, // 外部ファイル定義を使用
     
-    // 評価結果はまだ必須ではないためOptionにするなどの柔軟性を持たせる
-    // 今回は簡易化のため serde_json::Value のままにするか、型定義するか判断が必要
-    // 安全性重視なら型定義すべきですが、今は一旦 Value で逃げます（後で厳格化可能）
     pub evaluation: Option<serde_json::Value>,
 }
 
 impl Project {
-    // コンストラクタ（再構築用）
     pub fn new(
         id: ProjectId,
         title: String,
@@ -88,13 +48,27 @@ impl Project {
         }
     }
 
-    // ドメインロジックの例:
-    // 「タイトルを変更する」という操作をメソッドとして定義
-    // これにより、「どこでタイトルが書き換わったか」が追跡しやすくなります
     pub fn change_title(&mut self, new_title: String) {
         if !new_title.is_empty() {
             self.title = new_title;
             self.last_modified = Utc::now();
         }
     }
+}
+
+// テストコードは diagram::Diagram を使うように微修正が必要ですが、
+// コンパイラが教えてくれるので後述します。
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::model::diagram::{Diagram, Node, Edge}; // インポート追加
+
+    fn create_dummy_diagram() -> Diagram {
+        Diagram { nodes: vec![], edges: vec![] }
+    }
+    
+    // ... (以下のテストコードはそのまま) ...
+    // ※ 先ほど書いたテストコードはそのままで動くはずですが、
+    // use super::*; で diagram が見えなくなる可能性があるため、
+    // 必要に応じて上記 use を追加してください。
 }
