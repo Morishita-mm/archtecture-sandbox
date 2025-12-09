@@ -26,7 +26,7 @@ export const Sidebar = () => {
   ) => {
     // ReactFlowのノードタイプとしては 'default' を使用し、
     // ラベルで論理的な種類を区別します
-    event.dataTransfer.setData("application/reactflow/type", "default");
+    event.dataTransfer.setData("application/reactflow/type", nodeType);
     event.dataTransfer.setData("application/reactflow/label", label);
     // スタイル適用のため色情報を渡す
     event.dataTransfer.setData("application/reactflow/color", color);

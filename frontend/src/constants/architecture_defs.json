@@ -1,0 +1,80 @@
+{
+  "categories": [
+    {
+      "id": "client",
+      "label": "Client / User",
+      "color": "#3b82f6",
+      "bgColor": "#eff6ff",
+      "items": [
+        { "type": "Client App", "label": "Client App" },
+        { "type": "Mobile App", "label": "Mobile App" },
+        { "type": "Web Browser", "label": "Web Browser" }
+      ]
+    },
+    {
+      "id": "traffic",
+      "label": "Entry & Traffic",
+      "color": "#8b5cf6",
+      "bgColor": "#f5f3ff",
+      "items": [
+        { "type": "DNS (Route53)", "label": "DNS (Route53)" },
+        { "type": "CDN (CloudFront)", "label": "CDN (CloudFront)" },
+        { "type": "Load Balancer", "label": "Load Balancer" },
+        { "type": "API Gateway", "label": "API Gateway" },
+        { "type": "WAF (Firewall)", "label": "WAF (Firewall)" }
+      ]
+    },
+    {
+      "id": "compute",
+      "label": "Compute",
+      "color": "#f97316",
+      "bgColor": "#fff7ed",
+      "items": [
+        { "type": "Web Server", "label": "Web Server" },
+        { "type": "App Server", "label": "App Server" },
+        { "type": "Worker (Async)", "label": "Worker (Async)" },
+        { "type": "Batch Job", "label": "Batch Job" },
+        { "type": "Function (Serverless)", "label": "Function (Serverless)" }
+      ]
+    },
+    {
+      "id": "database",
+      "label": "Data Store",
+      "color": "#10b981",
+      "bgColor": "#ecfdf5",
+      "items": [
+        { "type": "RDBMS (SQL)", "label": "RDBMS (SQL)" },
+        { "type": "NoSQL (KV)", "label": "NoSQL (KV)" },
+        { "type": "NoSQL (Doc)", "label": "NoSQL (Doc)" },
+        { "type": "NoSQL (Graph)", "label": "NoSQL (Graph)" },
+        { "type": "Object Storage", "label": "Object Storage" },
+        { "type": "Search Engine", "label": "Search Engine" }
+      ]
+    },
+    {
+      "id": "integration",
+      "label": "Integration & Flow",
+      "color": "#ec4899",
+      "bgColor": "#fdf2f8",
+      "items": [
+        { "type": "Distributed Cache", "label": "Distributed Cache" },
+        { "type": "Message Queue", "label": "Message Queue" },
+        { "type": "Pub/Sub", "label": "Pub/Sub" },
+        { "type": "Event Bus", "label": "Event Bus" }
+      ]
+    },
+    {
+      "id": "observability",
+      "label": "Observability",
+      "color": "#64748b",
+      "bgColor": "#f1f5f9",
+      "items": [
+        { "type": "Log Aggregator", "label": "Log Aggregator" },
+        { "type": "Metrics Store", "label": "Metrics Store" },
+        { "type": "Dist. Tracer", "label": "Dist. Tracer" },
+        { "type": "Alert Manager", "label": "Alert Manager" },
+        { "type": "Health Checker", "label": "Health Checker" }
+      ]
+    }
+  ]
+}

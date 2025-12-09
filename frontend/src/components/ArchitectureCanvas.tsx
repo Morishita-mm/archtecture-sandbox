@@ -10,6 +10,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   Panel,
+  type Node,
 } from "reactflow";
 
 import "reactflow/dist/style.css";
@@ -113,7 +114,7 @@ function ArchitectureFlow() {
         y: event.clientY,
       });
 
-      const newNode = {
+      const newNode: Node = {
         id: getId(),
         type, // 基本的に 'default' が入ります
         position,

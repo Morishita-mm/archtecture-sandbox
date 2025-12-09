@@ -7,6 +7,22 @@ use std::env;
 
 use crate::domain::model::chat::ChatRequest;
 
+#[derive(Deserialize)]
+struct ArchitectureDefs {
+    categories: Vec<Category>,
+}
+
+#[derive(Deserialize)]
+struct Category {
+    items: Vec<Item>,
+}
+
+#[derive(Deserialize)]
+struct Item {
+    #[serde(rename = "type")] // JSONの "type" フィールドをマッピング
+    type_name: String,
+}
+
 // --- Gemini APIのリクエスト形式 (構造体定義) ---
 #[derive(Serialize)]
 struct GeminiRequest {
@@ -44,6 +60,32 @@ struct PartResponse {
     text: String,
 }
 
+// --- プロンプト生成関数 ---
+fn build_system_prompt() -> String {
+    // 1. プロンプトテンプレートを読み込む (コンパイル時に埋め込み)
+    let template = include_str!("system_prompt.txt");
+
+    // 2. フロントエンドのJSON定義を読み込む (相対パスに注意)
+    // backend/src/infrastructure/gemini/client.rs から見たパス
+    // -> ../../../../frontend/src/constants/architecture_defs.json
+    let json_str = include_str!("../../../../frontend/src/constants/architecture_defs.json");
+    
+    // 3. JSONをパースしてコンポーネントリストを作る
+    let defs: ArchitectureDefs = serde_json::from_str(json_str)
+        .expect("Failed to parse architecture_defs.json");
+
+    let mut components = String::new();
+    for category in defs.categories {
+        for item in category.items {
+            // YAMLのリスト形式 "- Name" に整形
+            components.push_str(&format!("    - \"{}\"\n", item.type_name));
+        }
+    }
+
+    // 4. テンプレート内のプレースホルダーを置換
+    template.replace("{{AVAILABLE_COMPONENTS}}", &components)
+}
+
 // --- 評価関数 ---
 pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn std::error::Error>> {
     // APIキーの取得
@@ -55,106 +97,11 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
     );
 
     // プロンプトの作成
-    let yaml_prompt_template = r#"
-system_context:
-  role: "Senior System Architect & Educator"
-  objective: "Evaluate if the user's design meets the SPECIFIC SCENARIO requirements based on best practices."
-  language: "Japanese"
-
-# アプリケーションの制約（ユーザーができること・できないこと）
-constraints:
-  tool_limitations:
-    - "This is a visual modeler for high-level topology."
-    - "Users CANNOT configure internal settings (e.g., config files, instance types)."
-    - "Users CAN only define TOPOLOGY (placement of nodes and connections)."
-  
-  # 現在のパレットにあるコンポーネント（これ以外は提案しない）
-  available_components:
-    # Entry & Traffic
-    - "DNS (Route53)"
-    - "CDN (CloudFront)"
-    - "Load Balancer"
-    - "API Gateway"
-    - "WAF (Firewall)"
-    # Compute
-    - "Web Server"
-    - "App Server"
-    - "Worker (Async)"
-    - "Batch Job"
-    - "Function (Serverless)"
-    # Data Store
-    - "RDBMS (SQL)"
-    - "NoSQL (KV)"
-    - "NoSQL (Doc)"
-    - "NoSQL (Graph)"
-    - "Object Storage"
-    - "Search Engine"
-    # Integration
-    - "Distributed Cache"
-    - "Message Queue"
-    - "Pub/Sub"
-    - "Event Bus"
-    # Observability
-    - "Log Aggregator"
-    - "Metrics Store"
-    - "Dist. Tracer"
-    - "Alert Manager"
-    - "Health Checker"
-    # User
-    - "Client App"
-    - "Mobile App"
-    - "Web Browser"
-  
-  instruction:
-    - "Do NOT suggest adding components that are NOT in the 'available_components' list."
-    - "Assume standard/default configurations are applied internally (e.g., passwords are set)."
-
-# 評価ロジック（ここを強化）
-evaluation_logic:
-  # 基本比較
-  - "Compare the 'user_design_data' against the 'scenario_requirements' defined in the input JSON."
-  
-  # トラフィック・スケーラビリティ評価
-  - "Low Traffic / Internal Tool: If user puts CDN, WAF, or Complex Microservices -> Mark as OVER-ENGINEERING (Lower score)."
-  - "High Traffic / Global App: If user lacks CDN or Load Balancer -> Mark as CRITICAL SCALABILITY ISSUE."
-  - "High Write/Read Volume: Check if Cache or specialized NoSQL/Search Engine is used appropriately."
-
-  # セキュリティ評価
-  - "Public Facing App: WAF and API Gateway are highly recommended. Penalize if connected directly to App Server without protection."
-  
-  # 処理フロー評価
-  - "Heavy Processing / Long Tasks: If the scenario involves video encoding, reports, or heavy AI tasks, look for 'Message Queue' and 'Worker'. If handled synchronously by App Server -> Mark as BAD PRACTICE."
-  
-  # データストア評価
-  - "Unstructured Data (Images/PDFs): Must use 'Object Storage'. Do NOT store binaries in RDBMS."
-  - "Complex Search Requirements: Should use 'Search Engine' instead of heavy SQL LIKE queries."
-
-  # 運用性評価 (Observability)
-  - "Production Grade Scenario: If 'Log Aggregator' or 'Alert Manager' is missing -> Suggest adding them for reliability (Minor penalty)."
-
-  # フィードバック方針
-  - "Always explain WHY based on the scenario's traffic, budget, and reliability requirements."
-
-# 出力フォーマット
-output_format:
-  format: "JSON"
-  schema:
-    score: "Integer (0-100)"
-    feedback: "String (Markdown. ### Headers. Explain 'Scenario Fit'.)"
-    improvement: "String (Markdown. Suggest changes to fit the scenario using ONLY available components.)"
-
-# 入力データ構造
-input_data_structure:
-  scenario: "Contains specific requirements (Users, Traffic, Budget)"
-  nodes: "List of architecture components"
-  edges: "List of connections"
-
-# 実際の入力データ
-input_json:
-"#;
+    let system_prompt = build_system_prompt();
+    println!("--- System Prompt (Head) --- \n{}...\n--------------------------", system_prompt);
 
     // プロンプト結合
-    let prompt = format!("{}\n{}", yaml_prompt_template, json_data);
+    let prompt = format!("{}\n{}", system_prompt, json_data);
 
     let request_body = GeminiRequest {
         contents: vec![Content {
