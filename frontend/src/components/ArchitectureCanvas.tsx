@@ -17,13 +17,15 @@ import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
 import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
 import type { EvaluationResult, ChatMessage, Scenario } from "../types";
-import { SCENARIOS } from "../scenarios";
-import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
-import { ScenarioSetup } from "./ScenarioSetup"; // 新規作成したコンポーネントをインポート
 import { EvaluationPanel } from "./EvaluationPanel";
 import { v4 as uuidv4 } from "uuid";
+
+interface ArchitectureCanvasProps {
+  selectedScenario: Scenario;
+  onBackToSelection: () => void;
+}
 
 // ▼ API_BASE_URLの定義
 const API_BASE_URL =
@@ -37,40 +39,13 @@ const onDragOver = (event: React.DragEvent) => {
   event.dataTransfer.dropEffect = "move";
 };
 
-// カスタムシナリオのデフォルトテンプレート（scenarios.tsに未定義の場合のフォールバック）
-const DEFAULT_CUSTOM_SCENARIO: Scenario = {
-  id: "custom",
-  title: "カスタム設計（フリーモード）",
-  description: "独自の要件を入力して、ゼロからアーキテクチャを設計します。",
-  isCustom: true,
-  requirements: {
-    users: "",
-    traffic: "",
-    availability: "",
-    budget: "",
-  },
-};
-
-function ArchitectureFlow() {
+function ArchitectureFlow({ selectedScenario, onBackToSelection }: ArchitectureCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
 
   // --- アプリケーションの状態 ---
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
-    SCENARIOS[0].id
-  );
-
-  // カスタムシナリオの状態管理
-  const [customScenario, setCustomScenario] = useState<Scenario>(
-    SCENARIOS.find((s) => s.id === "custom") || DEFAULT_CUSTOM_SCENARIO
-  );
-
-  // カスタム設定が完了しているかどうかのフラグ
-  // 初期状態: 選択中のシナリオがカスタムでなければ完了扱い(true)、カスタムなら未完了(false)
-  const [isCustomSetupDone, setIsCustomSetupDone] = useState(true);
-
   const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [memo, setMemo] = useState<string>("");
@@ -82,49 +57,32 @@ function ArchitectureFlow() {
   const projectIdRef = useRef<string>(uuidv4());
   const [isSaving, setIsSaving] = useState(false);
 
-  // 現在のシナリオオブジェクト（カスタム選択時はStateの値を使用）
-  const currentScenario =
-    selectedScenarioId === "custom"
-      ? customScenario
-      : SCENARIOS.find((s) => s.id === selectedScenarioId) || SCENARIOS[0];
+  // ★ currentScenarioはpropsから直接取得
+  const currentScenario = selectedScenario;
 
-  const handleCustomSetupComplete = (setupScenario: Scenario) => {
-    setCustomScenario(setupScenario);
-    setIsCustomSetupDone(true);
+  useEffect(() => {
+    // App.tsxからの遷移時（chatMessagesが空）にのみ挨拶メッセージをセット
+    if (chatMessages.length === 0) {
+      let initialMessages: ChatMessage[];
 
-    // 難易度に応じたパラメータの定義（ここで具体的な値を決定してしまう）
-    const difficultySpecs = {
-      small: {
-        scale: "小規模（個人開発・社内ツール）",
-        users: "50〜100人程度",
-        budget: "月額5,000円以内 (可能な限り安く)",
-        constraint: "運用コストをかけられないため、メンテナンスフリーな構成を好む"
-      },
-      medium: {
-        scale: "中規模（急成長スタートアップ）",
-        users: "10万DAU, ピーク時秒間100リクエスト",
-        budget: "月額50万円〜100万円",
-        constraint: "急激なアクセス増に耐えられるスケーラビリティが必須"
-      },
-      large: {
-        scale: "大規模（ミッションクリティカル）",
-        users: "1000万ユーザー, グローバル展開",
-        budget: "無制限（可用性とレイテンシが最優先）",
-        constraint: "単一障害点(SPOF)の完全排除と、データロス発生時の法的リスク回避"
-      }
-    };
+      if (currentScenario.isCustom) {
+          // カスタムシナリオの場合: ArchitectureFlow内にあったシステムプロンプト構築ロジックを再実行
+          const difficultySpecs = {
+              small: { scale: "小規模（個人開発・社内ツール）", users: "50〜100人程度", budget: "月額5,000円以内 (可能な限り安く)", constraint: "運用コストをかけられないため、メンテナンスフリーな構成を好む" },
+              medium: { scale: "中規模（急成長スタートアップ）", users: "10万DAU, ピーク時秒間100リクエスト", budget: "月額50万円〜100万円", constraint: "急激なアクセス増に耐えられるスケーラビリティが必須" },
+              large: { scale: "大規模（ミッションクリティカル）", users: "1000万ユーザー, グローバル展開", budget: "無制限（可用性とレイテンシが最優先）", constraint: "単一障害点(SPOF)の完全排除と、データロス発生時の法的リスク回避" }
+          };
 
-    const spec = difficultySpecs[setupScenario.difficulty || 'medium'];
+          const spec = difficultySpecs[currentScenario.difficulty || 'medium'];
 
-    // ★YAML形式でのシステムプロンプト構築
-    const hiddenSystemPrompt = `
+          const hiddenSystemPrompt = `
 ---
 Role: System Client
 Task: Simulate a client for system architecture design.
 
 Scenario:
-  Title: "${setupScenario.title}"
-  Description: "${setupScenario.description}"
+  Title: "${currentScenario.title}"
+  Description: "${currentScenario.description}"
   Scale: "${spec.scale}"
 
 Hidden_Context:
@@ -132,7 +90,7 @@ Hidden_Context:
   Users: "${spec.users}"
   Budget: "${spec.budget}"
   Critical_Constraint: "${spec.constraint}"
-  Domain_Specific_Constraint: "Please invent one technical constraint specific to '${setupScenario.title}' (e.g., real-time requirement, legacy system integration)."
+  Domain_Specific_Constraint: "Please invent one technical constraint specific to '${currentScenario.title}' (e.g., real-time requirement, legacy system integration)."
 
 Behavior_Rules:
   - Act as a non-technical stakeholder initially.
@@ -146,61 +104,30 @@ Evaluation_Criteria:
   - Does the proposed architecture solve the Critical_Constraint?
 ---
 
-Please start the conversation by acknowledging the request for "${setupScenario.title}" and waiting for the user to interview you.
+Please start the conversation by acknowledging the request for "${currentScenario.title}" and waiting for the user to interview you.
 `.trim();
 
-    setChatMessages([
-      // 1. システムプロンプト（YAML形式）
-      { role: "system", content: hiddenSystemPrompt },
-      // 2. AIからの最初の挨拶
-      {
-        role: "model",
-        content: `ご依頼ありがとうございます。「${setupScenario.title}」のシステム構築ですね。\n\n今回のプロジェクトについて、どのような点から詳細を詰めていきましょうか？`,
-      },
-    ]);
-  };
+          initialMessages = [
+              { role: "system", content: hiddenSystemPrompt },
+              {
+                  role: "model",
+                  content: `ご依頼ありがとうございます。「${currentScenario.title}」のシステム構築ですね。\n\n今回のプロジェクトについて、どのような点から詳細を詰めていきましょうか？`,
+              },
+          ];
 
-  // シナリオ変更時の処理
-  const handleScenarioChange = (newId: string) => {
-    setSelectedScenarioId(newId);
-
-    // チャット履歴とメモをリセット
-    setChatMessages([]);
-    setMemo("");
-
-    if (newId === "custom") {
-      // カスタムモード: 設定画面へ遷移
-      setIsCustomSetupDone(false);
-    } else {
-      // 既存シナリオ: 即座に開始＆挨拶メッセージ
-      setIsCustomSetupDone(true);
-      const targetScenario =
-        SCENARIOS.find((s) => s.id === newId) || SCENARIOS[0];
-      setChatMessages([
-        {
-          role: "model",
-          content: `こんにちは。「${targetScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
-        },
-      ]);
+      } else {
+          // デフォルトシナリオの場合
+          initialMessages = [
+              {
+                  role: "model",
+                  content: `こんにちは。「${currentScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
+              },
+          ];
+      }
+      
+      setChatMessages(initialMessages);
     }
-  };
-
-  // キャンセル時の処理（デフォルトに戻す）
-  const handleCustomSetupCancel = () => {
-    handleScenarioChange(SCENARIOS[0].id);
-  };
-
-  // 初回起動時の挨拶（カスタム以外の初期シナリオ用）
-  useEffect(() => {
-    if (chatMessages.length === 0 && selectedScenarioId !== "custom") {
-      setChatMessages([
-        {
-          role: "model",
-          content: `こんにちは。「${currentScenario.title}」の件についてですね。どのようなシステムをご提案いただけますか？`,
-        },
-      ]);
-    }
-  }, []);
+  }, [selectedScenario.id]); // selectedScenario.idが変更されたときのみ実行
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -259,7 +186,7 @@ Please start the conversation by acknowledging the request for "${setupScenario.
     setIsLoading(true);
 
     const designData = {
-      scenario: currentScenario, // 動的に更新されたシナリオが送信されます
+      scenario: currentScenario,
       nodes: currentNodes.map((n) => ({
         id: n.id,
         type: n.data.label,
@@ -338,22 +265,33 @@ Please start the conversation by acknowledging the request for "${setupScenario.
         height: "100vh",
       }}
     >
-      <Header
-        selectedScenarioId={selectedScenarioId}
-        onScenarioChange={handleScenarioChange}
-        onSave={onSaveProject}
-        isSaving={isSaving}
-      />
+      <header style={{ padding: '10px 20px', backgroundColor: '#f5f5f5', borderBottom: '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
+          <button 
+              onClick={onBackToSelection} 
+              style={{ padding: '8px 15px', border: '1px solid #007bff', borderRadius: '4px', backgroundColor: 'white', cursor: 'pointer', color: '#007bff' }}
+          >
+              ⬅ シナリオ選択に戻る
+          </button>
+          <h1 style={{ fontSize: '1.2em', margin: 0 }}>{currentScenario.title}</h1>
+          
+          <button 
+            onClick={onSaveProject}
+            disabled={isSaving}
+            style={{ 
+              marginLeft: 'auto', 
+              padding: '8px 15px', 
+              borderRadius: '4px', 
+              border: 'none', 
+              backgroundColor: isSaving ? '#ccc' : '#28a745', 
+              color: 'white', 
+              cursor: isSaving ? 'wait' : 'pointer' 
+            }}
+          >
+            {isSaving ? "保存中..." : "プロジェクト保存"}
+          </button>
+      </header>
 
-      {/* フロー制御: 設定未完了の場合はセットアップ画面を表示 */}
-      {!isCustomSetupDone ? (
-        <ScenarioSetup
-          initialScenario={customScenario}
-          onConfirm={handleCustomSetupComplete}
-          onCancel={handleCustomSetupCancel}
-        />
-      ) : (
-        <>
+      <>
           <div style={tabBarStyle}>
             <button
               style={activeTab === "chat" ? activeTabStyle : tabStyle}
@@ -459,15 +397,14 @@ Please start the conversation by acknowledging the request for "${setupScenario.
             <MemoPad value={memo} onChange={setMemo} />
           </div>
         </>
-      )}
     </div>
   );
 }
 
-export function ArchitectureCanvas() {
+export function ArchitectureCanvas({ selectedScenario, onBackToSelection }: ArchitectureCanvasProps) {
   return (
     <ReactFlowProvider>
-      <ArchitectureFlow />
+      <ArchitectureFlow selectedScenario={selectedScenario} onBackToSelection={onBackToSelection} />
     </ReactFlowProvider>
   );
 }

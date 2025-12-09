@@ -210,9 +210,9 @@ const containerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  height: "100%",
-  backgroundColor: "#f5f7fa",
+  minHeight: "100vh",
   padding: "20px",
+  backgroundColor: "#f4f7f9",
 };
 
 const cardStyle: React.CSSProperties = {
