@@ -22,6 +22,7 @@ import { Header } from "./Header";
 import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
 import { ScenarioSetup } from "./ScenarioSetup"; // 新規作成したコンポーネントをインポート
+import { EvaluationPanel } from "./EvaluationPanel";
 import { v4 as uuidv4 } from "uuid";
 
 // ▼ API_BASE_URLの定義
@@ -70,7 +71,7 @@ function ArchitectureFlow() {
   // 初期状態: 選択中のシナリオがカスタムでなければ完了扱い(true)、カスタムなら未完了(false)
   const [isCustomSetupDone, setIsCustomSetupDone] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<"chat" | "design">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "design" | "evaluate">("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [memo, setMemo] = useState<string>("");
 
@@ -284,7 +285,7 @@ Please start the conversation by acknowledging the request for "${setupScenario.
 
       const result: EvaluationResult = await response.json();
       setEvaluationResult(result);
-      setIsModalOpen(true);
+      setActiveTab("evaluate");
     } catch (error) {
       console.error("API Error:", error);
       alert("評価中にエラーが発生しました。");
@@ -367,6 +368,12 @@ Please start the conversation by acknowledging the request for "${setupScenario.
             >
               🛠️ アーキテクチャ設計
             </button>
+            <button
+              style={activeTab === "evaluate" ? activeTabStyle : tabStyle}
+              onClick={() => setActiveTab("evaluate")}
+            >
+              📊 評価結果
+            </button>
           </div>
 
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -384,6 +391,16 @@ Please start the conversation by acknowledging the request for "${setupScenario.
                     scenario={currentScenario}
                     messages={chatMessages}
                     onSendMessage={setChatMessages}
+                  />
+                </div>
+              )}
+
+              {activeTab === "evaluate" && (
+                <div style={{ width: "100%", height: "100%" }}>
+                  <EvaluationPanel
+                    result={evaluationResult}
+                    onEvaluate={onEvaluate}
+                    isLoading={isLoading}
                   />
                 </div>
               )}
@@ -433,11 +450,6 @@ Please start the conversation by acknowledging the request for "${setupScenario.
                       </button>
                     </Panel>
                   </ReactFlow>
-                  <EvaluationModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    result={evaluationResult}
-                  />
                 </div>
               </div>
             </div>
