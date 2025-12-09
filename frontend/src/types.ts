@@ -1,4 +1,24 @@
+export type ScenarioDifficulty = 'small' | 'medium' | 'large';
+
+export interface ScenarioRequirements {
+  users: string;
+  traffic: string;
+  availability: string;
+  budget: string;
+}
+
+export interface Scenario {
+  id: string;
+  title: string;
+  description: string;
+  requirements: ScenarioRequirements;
+
+  isCustom?: boolean;
+  difficulty?: ScenarioDifficulty;
+}
+
 export interface EvaluationResult {
+  scenarioId: string;
   score: number;
   feedback: string;
   improvement: string;
@@ -16,6 +36,6 @@ export interface EdgeData {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'model';
+  role: 'user' | 'model' | 'system';
   content: string;
 }

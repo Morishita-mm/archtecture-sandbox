@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import type { Scenario } from "../scenarios";
-import type { ChatMessage } from "../types"; // 共通型を使用
+import type { Scenario, ChatMessage } from "../types"; // 共通型を使用
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -24,6 +23,8 @@ export const ChatInterface: React.FC<Props> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const displayMessages = messages.filter((msg) => msg.role !== "system");
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -80,7 +81,7 @@ export const ChatInterface: React.FC<Props> = ({
   return (
     <div style={containerStyle}>
       <div style={messagesAreaStyle}>
-        {messages.map((msg, idx) => (
+        {displayMessages.map((msg, idx) => (
           <div
             key={idx}
             style={{

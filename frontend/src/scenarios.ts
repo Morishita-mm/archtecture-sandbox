@@ -1,14 +1,4 @@
-export interface Scenario {
-  id: string;
-  title: string;
-  description: string;
-  requirements: {
-    users: string;      // ユーザー規模
-    traffic: string;    // トラフィック特性
-    availability: string; // 可用性要件
-    budget: string;     // 予算感
-  };
-}
+import type { Scenario } from './types';
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -31,6 +21,21 @@ export const SCENARIOS: Scenario[] = [
       traffic: 'High (Read heavy, Write heavy)',
       availability: 'Critical (24/7 uptime required)',
       budget: 'High (Performance is priority)',
+    },
+  },
+  
+  // カスタム設計用テンプレート
+  {
+    id: 'custom',
+    title: 'カスタム設計（フリーテーマ）',
+    description: '独自のテーマ設定を行い、クライアントへのヒアリングから設計を始めます。',
+    isCustom: true,
+    difficulty: 'medium',
+    requirements: {
+      users: 'AI決定',
+      traffic: 'AI決定',
+      availability: 'AI決定',
+      budget: 'AI決定',
     },
   },
 ];
