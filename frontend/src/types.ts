@@ -19,9 +19,19 @@ export interface Scenario {
   partnerRole?: PartnerRole;
 }
 
+export interface DetailedScores {
+  availability: number;
+  scalability: number;
+  security: number;
+  maintainability: number;
+  costEfficiency: number;
+  feasibility: number;
+}
+
 export interface EvaluationResult {
-  scenarioId: string;
   score: number;
+  totalScore: number;
+  details: DetailedScores;
   feedback: string;
   improvement: string;
 }

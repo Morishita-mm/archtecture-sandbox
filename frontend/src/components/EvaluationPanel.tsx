@@ -1,6 +1,14 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+} from "recharts"; // ★追加
 import type { EvaluationResult } from "../types";
 
 interface Props {
@@ -14,8 +22,8 @@ export const EvaluationPanel: React.FC<Props> = ({
   onEvaluate,
   isLoading,
 }) => {
-  // 1. まだ評価がない場合の表示
   if (!result) {
+    // ... (未評価時の表示コードは既存のまま) ...
     return (
       <div style={emptyContainerStyle}>
         <div style={emptyCardStyle}>
@@ -42,12 +50,35 @@ export const EvaluationPanel: React.FC<Props> = ({
     );
   }
 
-  // 2. 評価結果がある場合の表示
+  // ★追加: スコアに応じた色決定
   const getScoreColor = (score: number) => {
     if (score >= 80) return "#4CAF50";
     if (score >= 50) return "#FF9800";
     return "#F44336";
   };
+
+  // ★追加: チャット用データ変換
+  // result.details が存在しない場合（古いAPIレスポンス等）のガードを入れておくと安全です
+  const details = result.details || {
+    availability: 0,
+    scalability: 0,
+    security: 0,
+    maintainability: 0,
+    costEfficiency: 0,
+    feasibility: 0,
+  };
+  
+  // 総合スコア（後方互換性のため score か totalScore を使用）
+  const totalScore = result.totalScore || result.score || 0;
+
+  const chartData = [
+    { subject: "可用性", A: details.availability, fullMark: 100 },
+    { subject: "拡張性", A: details.scalability, fullMark: 100 },
+    { subject: "安全性", A: details.security, fullMark: 100 },
+    { subject: "保守性", A: details.maintainability, fullMark: 100 },
+    { subject: "コスト", A: details.costEfficiency, fullMark: 100 },
+    { subject: "実現性", A: details.feasibility, fullMark: 100 },
+  ];
 
   return (
     <div style={containerStyle}>
@@ -58,11 +89,32 @@ export const EvaluationPanel: React.FC<Props> = ({
         </button>
       </div>
 
-      <div style={scoreSectionStyle}>
-        <div style={scoreLabelStyle}>総合スコア</div>
-        <div style={{ ...scoreValueStyle, color: getScoreColor(result.score) }}>
-          {result.score}
-          <span style={{ fontSize: "24px", color: "#999" }}>/100</span>
+      <div style={topSectionStyle}>
+        {/* 左側: 総合スコア */}
+        <div style={scoreBoxStyle}>
+          <div style={scoreLabelStyle}>総合スコア</div>
+          <div style={{ ...scoreValueStyle, color: getScoreColor(totalScore) }}>
+            {totalScore}
+            <span style={{ fontSize: "24px", color: "#999" }}>/100</span>
+          </div>
+        </div>
+
+        {/* 右側: レーダーチャート */}
+        <div style={chartBoxStyle}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+              <PolarGrid />
+              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
+              <Radar
+                name="Score"
+                dataKey="A"
+                stroke="#2196F3"
+                fill="#2196F3"
+                fillOpacity={0.6}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -90,6 +142,7 @@ export const EvaluationPanel: React.FC<Props> = ({
 };
 
 // --- Styles ---
+// 既存のスタイルに加えて、レイアウト用のスタイルを追加
 const containerStyle: React.CSSProperties = {
   padding: "30px",
   height: "100%",
@@ -97,6 +150,40 @@ const containerStyle: React.CSSProperties = {
   backgroundColor: "#f5f7fa",
 };
 
+const headerStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "20px",
+};
+
+const topSectionStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "20px",
+  marginBottom: "30px",
+  height: "300px", // チャートの高さを確保
+};
+
+const scoreBoxStyle: React.CSSProperties = {
+  flex: 1,
+  backgroundColor: "white",
+  borderRadius: "12px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+};
+
+const chartBoxStyle: React.CSSProperties = {
+  flex: 2, // チャートの方を広く取る
+  backgroundColor: "white",
+  borderRadius: "12px",
+  padding: "10px",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+};
+
+// ... 以下、既存のスタイル定義 (emptyContainerStyle, scoreLabelStyleなどはそのまま利用) ...
 const emptyContainerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "center",
@@ -116,26 +203,6 @@ const emptyCardStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const headerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "30px",
-};
-
-const scoreSectionStyle: React.CSSProperties = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "12px",
-  textAlign: "center",
-  marginBottom: "30px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
 const scoreLabelStyle: React.CSSProperties = {
   fontSize: "16px",
   color: "#666",
@@ -144,7 +211,7 @@ const scoreLabelStyle: React.CSSProperties = {
 };
 
 const scoreValueStyle: React.CSSProperties = {
-  fontSize: "64px",
+  fontSize: "80px",
   fontWeight: "bold",
   lineHeight: 1,
 };

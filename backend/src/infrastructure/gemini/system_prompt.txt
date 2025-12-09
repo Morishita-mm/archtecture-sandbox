@@ -23,6 +23,13 @@ Evaluation_Steps:
 Output_Format:
   Format: JSON
   Schema:
-    score: Integer (0-100)
-    feedback: String (Markdown, Japanese. Be polite but strict as a professional architect.)
-    improvement: String (Markdown, Japanese. Concrete advice on what to add/remove.)
+    totalScore: Integer (0-100)
+    details:
+      availability: Integer (0-100) - Evaluation of redundancy and uptime
+      scalability: Integer (0-100) - Ability to handle load increase
+      security: Integer (0-100) - Usage of WAF, VPC design, etc.
+      maintainability: Integer (0-100) - Simplicity and ease of operation
+      costEfficiency: Integer (0-100) - Alignment with the target budget
+      feasibility: Integer (0-100) - Implementation complexity vs timeframe
+    feedback: String (Markdown)
+    improvement: String (Markdown)
