@@ -51,7 +51,7 @@ resource "aws_apprunner_service" "backend" {
         
         runtime_environment_variables = {
           GEMINI_API_KEY = var.gemini_api_key
-          DATABASE_URL   = "postgres://${aws_db_instance.main.username}:${var.db_password}@${aws_db_instance.main.address}:5432/arch_db"
+          DATABASE_URL   = "postgres://dummy:dummy@localhost:5432/dummy"
         }
       }
     }

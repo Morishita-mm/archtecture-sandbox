@@ -1,6 +1,5 @@
 mod domain;
 mod infrastructure;
-mod presentation;
 
 use axum::{
     Json, Router,
@@ -8,47 +7,14 @@ use axum::{
     routing::{get, post},
     response::IntoResponse,
 };
-use sqlx::postgres::PgPoolOptions;
-use std::env;
-use std::time::Duration;
 use tower_http::cors::{Any, CorsLayer};
 
 use domain::model::chat::ChatRequest;
 use infrastructure::gemini::client as gemini_client;
-use presentation::handlers::project::save_project_handler;
 
 #[tokio::main]
 async fn main() {
-    // 1. データベース接続設定
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://user:password@db:5432/arch_db".to_string());
-
-    println!("Connecting to database...");
-
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(30)) 
-        .connect(&database_url)
-        .await
-        .expect("Failed to connect to database");
-
-    println!("Database connected successfully!");
-
-    let migration_sql = r#"
-    CREATE TABLE IF NOT EXISTS projects (
-      id UUID PRIMARY KEY,
-      title TEXT NOT NULL,
-      scenario_id TEXT NOT NULL,
-      last_modified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      diagram_data JSONB,
-      chat_history JSONB,
-      evaluation JSONB
-    );
-    "#;
-    sqlx::query(migration_sql)
-        .execute(&pool)
-        .await
-        .expect("Failed to run migration");
+    println!("Starting server without Database...");
 
     // 2. CORS設定
     let cors = CorsLayer::new()
@@ -58,17 +24,18 @@ async fn main() {
 
     // 3. ルーティング設定
     let app = Router::new()
-        .route("/", get(|| async { "Hello, Architecture!" }))
+        .route("/", get(|| async { "Hello, Architecture (Stateless)!" }))
         .route("/api/evaluate", post(evaluate_architecture))
         .route("/api/chat", post(handle_chat))
-        .route("/api/projects", post(save_project_handler))
-        .layer(cors)
-        .with_state(pool);
+        .route("/api/projects", post(mock_save_project)) // ダミーハンドラに変更
+        .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     println!("Backend listening on 0.0.0.0:8080");
     axum::serve(listener, app).await.unwrap();
 }
+
+// --- ハンドラー関数 ---
 
 async fn evaluate_architecture(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
     println!("Evaluating with Gemini...");
@@ -102,4 +69,12 @@ async fn handle_chat(Json(payload): Json<ChatRequest>) -> impl IntoResponse {
             Json(serde_json::json!({ "reply": "Error", "status": "error" }))
         }
     }
+}
+
+async fn mock_save_project(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
+    println!("Mock Save Project: {:?}", payload.get("title"));
+    println!("(Database is disabled, so data is not persisted)");
+    
+    // 成功レスポンスを返す
+    Json(serde_json::json!({ "status": "success", "id": payload["id"], "message": "Saved to session (mock)" }))
 }

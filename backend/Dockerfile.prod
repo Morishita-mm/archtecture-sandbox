@@ -10,15 +10,13 @@ RUN USER=root cargo new --bin backend
 WORKDIR /usr/src/app/backend
 COPY ./Cargo.toml ./Cargo.lock ./
 
-ENV SQLX_OFFLINE=true
-
 # 依存関係ビルド
 RUN cargo build --release
 
 # ソースコードビルド
 RUN rm src/*.rs
 COPY ./src ./src
-COPY ./.sqlx ./.sqlx
+
 RUN touch src/main.rs
 RUN cargo build --release
 
