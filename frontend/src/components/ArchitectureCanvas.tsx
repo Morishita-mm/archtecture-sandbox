@@ -15,7 +15,6 @@ import ReactFlow, {
 
 import "reactflow/dist/style.css";
 import { Sidebar } from "./Sidebar";
-import { EvaluationModal } from "./EvaluationModal";
 import { BiChat, BiNetworkChart, BiBarChart } from "react-icons/bi";
 import type { EvaluationResult, ChatMessage, Scenario } from "../types";
 import { SCENARIOS } from "../scenarios";
@@ -76,7 +75,6 @@ function ArchitectureFlow() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [memo, setMemo] = useState<string>("");
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [evaluationResult, setEvaluationResult] =
     useState<EvaluationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);

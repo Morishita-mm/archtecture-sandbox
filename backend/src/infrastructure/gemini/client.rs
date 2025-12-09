@@ -4,6 +4,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env;
+use std::fs;
 
 use crate::domain::model::chat::ChatRequest;
 
@@ -65,24 +66,39 @@ fn build_system_prompt() -> String {
     // 1. プロンプトテンプレートを読み込む (コンパイル時に埋め込み)
     let template = include_str!("system_prompt.txt");
 
-    // 2. フロントエンドのJSON定義を読み込む
-    // backend/src/infrastructure/gemini/client.rs から見たパス
-    let json_str = include_str!("../../../../frontend/src/constants/architecture_defs.json");
-
-    // 3. JSONをパースしてコンポーネントリストを作る
-    let defs: ArchitectureDefs =
-        serde_json::from_str(json_str).expect("Failed to parse architecture_defs.json");
-
-    let mut components = String::new();
-    for category in defs.categories {
-        for item in category.items {
-            // YAMLのリスト形式 "- Name" に整形
-            components.push_str(&format!("    - \"{}\"\n", item.type_name));
+    match get_architecture_defs_json() {
+        Ok(json_str) => {
+            let defs: ArchitectureDefs =
+                serde_json::from_str(&json_str).expect("Failed to parse architecture_defs.json");
+        
+            let mut components = String::new();
+            for category in defs.categories {
+                for item in category.items {
+                    // YAMLのリスト形式 "- Name" に整形
+                    components.push_str(&format!("    - \"{}\"\n", item.type_name));
+                }
+            }
+        
+            // テンプレート内のプレースホルダーを置換
+            template.replace("{{AVAILABLE_COMPONENTS}}", &components)
+        }
+        Err(e) => {
+            eprintln!("Error loading configuration: {}", e);
+            std::process::exit(1);
         }
     }
+}
 
-    // 4. テンプレート内のプレースホルダーを置換
-    template.replace("{{AVAILABLE_COMPONENTS}}", &components)
+// アーキテクチャ定義ファイル読み込み
+pub fn get_architecture_defs_json() -> Result<String, Box<dyn std::error::Error>> {
+    let default_path = "../../../../frontend/src/constants/architecture_defs.json";
+    let file_path = env::var("ARCH_DEFS_PATH").unwrap_or(default_path.to_string());
+
+    // 実行時にファイルを読み込む
+    let json_str = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read architecture_defs.json from '{}': {}", file_path, e))?;
+
+    Ok(json_str)
 }
 
 fn get_difficulty_specs(difficulty: &str) -> serde_json::Value {
