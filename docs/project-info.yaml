@@ -1,144 +1,80 @@
 # ==============================================================================
-# Project Configuration Reference
+# Development Status Update
 # ==============================================================================
-# プロジェクト名: architecture-sandbox
-# 最終更新: 2025-12-09 (UI/UXフロー修正時点)
-# 目的: コンテナ名、ポート番号、パス、環境変数、およびアプリケーションの動作の「正」となる情報の管理
+# 最終更新: 2025-12-10
+# 更新内容: データ永続化（ローカル）、バージョン管理、UI動線最適化
 # ==============================================================================
 
-architecture:
-  type: "Microservices (Docker Compose / Dev Container)"
-  root_workspace: "/workspace"  # コンテナ内でのプロジェクトルートパス
+project_status:
+  phase: "Feature Expansion & Polish"
+  latest_milestone: "Local Persistence & Version Control Implemented"
 
 # ------------------------------------------------------------------------------
-# 1. Services & Deployment (コンテナ構成とデプロイ)
-# ------------------------------------------------------------------------------
-services:
-  # --- Backend Service ---
-  backend:
-    technology: "Rust (Axum + Tokio)"
-    container_name: "app-backend"
-    service_name: "backend"
-    
-    paths:
-      host_dir: "./backend"
-      container_workdir: "/workspace/backend"
-    
-    networking:
-      port_internal: 8080
-      port_external: 8080
-      base_url_browser: "http://localhost:8080"
-      base_url_internal: "http://backend:8080"
-    
-    commands:
-      dev_start: "cargo watch -x run"
-      build: "cargo build"
-    
-    deployment_prod:
-      target: AWS App Runner
-      image_tag: architecture-sandbox-backend:latest
-      dockerfile: ./backend/Dockerfile.prod
-      runtime_env_vars: 
-        - GEMINI_API_KEY # (Google Gemini APIキー)
-        - ARCH_DEFS_PATH # (Frontendの定義ファイルパス)
-
-  # --- Frontend Service ---
-  frontend:
-    technology: "React (Vite + TypeScript)"
-    container_name: "app-frontend"
-    service_name: "frontend"
-    
-    paths:
-      host_dir: "./frontend"
-      container_workdir: "/workspace/frontend"
-    
-    networking:
-      port_internal: 5173
-      port_external: 5173
-      base_url: "http://localhost:5173"
-    
-    commands:
-      dev_start: "npm run dev -- --host"
-      install: "npm install"
-    
-    deployment_prod:
-      target: AWS S3 + CloudFront (SPA Hosting)
-
-  # --- Database Service ---
-  database:
-    technology: "PostgreSQL 15 (Alpine)"
-    container_name: "app-db"
-    service_name: "db"
-    
-    networking:
-      port_internal: 5432
-      port_external: 5432
-    
-    credentials:
-      user: "user"
-      password: "password"
-      db_name: "arch_db"
-    
-    connection_strings:
-      internal_url: "postgres://user:password@db:5432/arch_db"
-      external_url: "postgres://user:password@localhost:5432/arch_db"
-
-# ------------------------------------------------------------------------------
-# 2. Files & Configuration (設定ファイル)
-# ------------------------------------------------------------------------------
-configuration_files:
-  docker_compose:
-    production: "./compose.yaml"
-    development: "./compose.dev.yaml"
-  
-  dev_container:
-    config: "./.devcontainer/devcontainer.json"
-    
-  prod_docker:
-    backend_prod: "./backend/Dockerfile.prod"
-
-# ------------------------------------------------------------------------------
-# 3. Application Operational Details (アプリケーション動作詳細)
+# Updated Operational Details (動作仕様の更新)
 # ------------------------------------------------------------------------------
 operational_details:
-  current_ui_flow:
-    description: UI/UX改善により、アプリケーションはシナリオ選択画面から開始する。
+  ui_flow_update:
+    description: "トップ画面で「新規開始」か「続きから再開」を選択可能なフローに変更"
     steps:
-      - 'SCENARIO_SELECTION': ユーザーはデフォルトシナリオまたはカスタムシナリオを選択
-      - 'CUSTOM_DEFINITION': カスタム選択の場合、ScenarioSetup画面で難易度と顧客役割を設定
-      - 'CANVAS': 設計・チャット画面へ遷移
-      - 'CANVAS_INIT': 選択/設定されたシナリオに基づき、チャットの初期メッセージとシステムプロンプトが構築される
+      - 'ENTRY_SCREEN': 
+          action: "ユーザーは「シナリオカード選択」または「既存プロジェクト読み込み」を行う"
+          component: "ScenarioSelectionScreen.tsx"
+      - 'LOAD_FLOW': 
+          trigger: "「既存プロジェクトを読み込む」ボタン（ホバーエフェクト付）"
+          process: "JSONファイル選択 -> Base64デコード -> 構造/バージョン検証 -> 状態復元"
+          restore_target: "チャット履歴, ノード/エッジ, メモ, AI評価結果"
+      - 'SAVE_FLOW': 
+          trigger: "キャンバス画面右上の保存ボタン"
+          process: "全StateをJSON化 -> Base64エンコード -> ファイル出力"
+          naming_convention: "<シナリオ名>_v<バージョン>.json"
+          version_control: "保存実行後、内部バージョンを自動インクリメント (例: 1.0 -> 2.0)"
 
-  core_features:
-    - name: AI交渉（チャット）
-      endpoint: POST /api/chat
-      role: '顧客（AI）'
-      logic: '役割に基づき、AIのペルソナと裏要件をプロンプトに注入し、Gemini APIを呼び出す。'
+  new_features:
+    - name: "ローカルデータ永続化"
+      status: "Implemented"
+      details: 
+        method: "Client-side JSON File Download/Upload"
+        security: "Base64 Obfuscation (システムプロンプト隠蔽のため)"
+        scope: "Full State Persistence (Diagram, Chat, Memo, Evaluation Result)"
     
-    - name: AI評価
-      endpoint: POST /api/evaluate
-      role: '上級システムアーキテクト（AI）'
-      logic: '図データとシナリオ設定を受け取り、難易度に応じた真の要件を注入。静的なアーキテクチャ定義ファイルを読み込み、評価プロンプトを構築し、Gemini APIを呼び出す。'
-
-  limitations:
-    - name: データ永続化
-      status: Mocked (未実装)
-      detail: 'POST /api/projects はダミー実装。データベースサービスは開発環境設定のみ。'
-    - name: セキュリティ（CORS）
-      status: Development Mode
-      detail: 'CORSは全て許可（Allow Any）。本番環境ではCloudFrontドメインに制限が必要。'
-    - name: 並行性
-      status: 安全
-      detail: 'アプリケーションはステートレス設計のため、複数ユーザーからの同時アクセスは安全に並列処理される。'
+    - name: "簡易バージョン管理"
+      status: "Implemented"
+      details:
+        logic: "ファイル読み込み時にバージョンを解析し、次回保存時に +1.0 する"
+        format: "String (e.g., '1.0', '2.0')"
 
 # ------------------------------------------------------------------------------
-# 4. Known Behaviors (挙動のメモ)
+# Recent Changes (直近の変更点)
 # ------------------------------------------------------------------------------
-behaviors:
-  hot_reload:
-    backend: "有効 (cargo-watchにより、ファイル保存時に自動再ビルド)"
-    frontend: "有効 (Vite HMRにより、ファイル保存時にブラウザ即時反映)"
+recent_changes:
+  - id: feat_local_persistence
+    category: "Feature"
+    description: "RDSを使用せず、ローカルファイル(JSON)によるデータの完全な保存・復元機能を実装"
   
-  volume_mounts:
-    backend_target: "名前付きボリューム 'target-cache' に永続化 (ホストには見えない)"
-    frontend_node_modules: "名前付きボリューム 'node_modules' に永続化 (ホスト側は空に見える)"
+  - id: feat_save_evaluation
+    category: "Feature"
+    description: "AIによる評価結果(EvaluationResult)も保存データに含め、評価後の状態から再開可能に拡張"
+  
+  - id: feat_versioning
+    category: "Logic"
+    description: "保存ファイル名にバージョンを含め、読み込み→保存のサイクルでバージョンを自動更新するロジックを追加"
+  
+  - id: ux_load_button
+    category: "UI/UX"
+    description: "プロジェクト読み込みボタンをヘッダーからトップ画面へ移動し、動線を短縮。ホバーアニメーションを追加"
+
+  - id: fix_build_error
+    category: "Bugfix"
+    description: "ReactFlowのEdge型キャストにおけるTS型定義エラーを修正"
+
+# ------------------------------------------------------------------------------
+# Updated Limitations (制約事項の更新)
+# ------------------------------------------------------------------------------
+limitations_update:
+  - name: "データ共有"
+    status: "Manual"
+    detail: "サーバーに保存しないため、他者への共有はJSONファイルの送付が必要"
+  
+  - name: "セキュリティ（隠しパラメータ）"
+    status: "Obfuscated"
+    detail: "暗号化ではなくBase64エンコードによる難読化。技術的なユーザーであればデコードして隠し要件を閲覧可能（仕様として許容）"
