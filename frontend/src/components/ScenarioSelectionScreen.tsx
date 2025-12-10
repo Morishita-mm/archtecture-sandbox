@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { SCENARIOS } from "../scenarios";
 import type { Scenario, ProjectSaveData } from "../types";
-import { FaCog, FaLightbulb, FaGithub } from "react-icons/fa"; // FaGithubを追加
-import { BiFolderOpen, BiHelpCircle, BiBookContent } from "react-icons/bi"; // BiHelpCircle, BiBookContentを追加
+import { FaCog, FaLightbulb, FaGithub } from "react-icons/fa";
+import { BiFolderOpen, BiHelpCircle, BiBookContent } from "react-icons/bi";
 import { loadProjectFromLocalFile } from "../utils/fileHandler";
-import { HelpModal } from "./HelpModal"; // ★追加
+import { HelpModal } from "./HelpModal";
 
 interface ScenarioSelectionScreenProps {
   onSelectScenario: (scenario: Scenario) => void;
@@ -14,7 +14,7 @@ interface ScenarioSelectionScreenProps {
 export const ScenarioSelectionScreen: React.FC<
   ScenarioSelectionScreenProps
 > = ({ onSelectScenario, onProjectLoad }) => {
-  const [isHelpOpen, setIsHelpOpen] = useState(false); // ★追加
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -44,7 +44,8 @@ export const ScenarioSelectionScreen: React.FC<
     minHeight: "100vh",
     padding: "20px",
     backgroundColor: "#f4f7f9",
-    position: "relative", // ヘッダー配置用
+    position: "relative",
+    boxSizing: "border-box",
   };
 
   const headerBarStyle: React.CSSProperties = {
@@ -66,12 +67,12 @@ export const ScenarioSelectionScreen: React.FC<
     transition: "transform 0.2s, box-shadow 0.2s",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "space-between", // コンテンツを上下に分散
+    justifyContent: "space-between",
   };
 
   const footerStyle: React.CSSProperties = {
-    marginTop: "auto", // 最下部に配置
-    paddingTop: "40px",
+    marginTop: "auto",
+    paddingTop: "20px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -101,7 +102,6 @@ export const ScenarioSelectionScreen: React.FC<
 
   return (
     <div style={containerStyle}>
-      {/* ★追加: 右上のヘルプボタン */}
       <div style={headerBarStyle}>
         <button
           onClick={() => setIsHelpOpen(true)}
@@ -127,11 +127,11 @@ export const ScenarioSelectionScreen: React.FC<
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       {/* メインコンテンツ */}
-      <div style={{ marginTop: "60px", textAlign: "center" }}>
+      <div style={{ marginTop: "40px", textAlign: "center" }}>
         <h1
           style={{
-            marginBottom: "20px",
-            fontSize: "3.5em", 
+            marginBottom: "10px",
+            fontSize: "3.5em",
             color: "#24292e",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 800,
@@ -141,14 +141,15 @@ export const ScenarioSelectionScreen: React.FC<
         >
           Architecture Sandbox
         </h1>
-        <p style={{ color: "#666", marginBottom: "40px" }}>
+        <p style={{ color: "#666", marginBottom: "30px", fontSize: "1.1em" }}>
+          {" "}
           AIパートナーと対話しながら、システムアーキテクチャを設計・評価しよう
         </p>
 
         {/* ファイル読み込みボタン */}
         <div
           style={{
-            marginBottom: "50px",
+            marginBottom: "40px", // 50px -> 40px
             display: "flex",
             justifyContent: "center",
           }}
