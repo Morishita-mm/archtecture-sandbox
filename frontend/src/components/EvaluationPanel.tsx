@@ -9,21 +9,41 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
 } from "recharts";
-// ★追加: アイコンのインポート
 import { BiSearchAlt, BiRevision, BiBot, BiBulb } from "react-icons/bi";
+import { SiX } from "react-icons/si";
 import type { EvaluationResult } from "../types";
 
 interface Props {
   result: EvaluationResult | null;
   onEvaluate: () => void;
   isLoading: boolean;
+  scenarioTitle: string;
 }
 
 export const EvaluationPanel: React.FC<Props> = ({
   result,
   onEvaluate,
   isLoading,
+  scenarioTitle,
 }) => {
+  // シェアボタンのハンドラ
+  const handleShare = () => {
+    if (!result) return;
+
+    const score = result.totalScore || result.score || 0;
+
+    // 投稿テキストの作成
+    const text = `Architecture Sandboxで「${scenarioTitle}」を設計しました！\n総合スコア: ${score}点\n`;
+    const hashtags = "ArchitectureSandbox,システム設計";
+    const url = import.meta.env.VITE_APP_SHARE_URL || window.location.origin;
+
+    // Xの投稿画面を開く
+    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text
+    )}&hashtags=${hashtags}&url=${encodeURIComponent(url)}`;
+    window.open(shareUrl, "_blank");
+  };
+
   if (!result) {
     return (
       <div style={emptyContainerStyle}>
@@ -91,19 +111,27 @@ export const EvaluationPanel: React.FC<Props> = ({
     <div style={containerStyle}>
       <div style={headerStyle}>
         <h2 style={{ margin: 0 }}>アーキテクチャ評価レポート</h2>
-        <button
-          onClick={onEvaluate}
-          disabled={isLoading}
-          style={retryButtonStyle}
-        >
-          {isLoading ? (
-            "再評価中..."
-          ) : (
-            <>
-              <BiRevision size={18} /> 再評価する
-            </>
-          )}
-        </button>
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          {/* ★追加: シェアボタン */}
+          <button onClick={handleShare} style={shareButtonStyle}>
+            <SiX size={14} /> 結果をシェア
+          </button>
+
+          <button
+            onClick={onEvaluate}
+            disabled={isLoading}
+            style={retryButtonStyle}
+          >
+            {isLoading ? (
+              "再評価中..."
+            ) : (
+              <>
+                <BiRevision size={18} /> 再評価する
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div style={topSectionStyle}>
@@ -286,4 +314,18 @@ const retryButtonStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "6px",
+};
+
+const shareButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  backgroundColor: "black", // Xのブランドカラー
+  color: "white",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+  fontSize: "14px",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  fontWeight: "bold",
 };
