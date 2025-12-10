@@ -6,6 +6,9 @@ services:
       - target-cache:/workspace/backend/target
     working_dir: /workspace/backend
     command: ["cargo", "watch", "-x", "run"]
+    environment:
+      - RUST_BACKTRACE=1
+      - FRONTEND_ORIGIN=http://localhost:5173
 
   frontend:
     volumes:
