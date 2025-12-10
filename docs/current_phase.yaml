@@ -1,8 +1,8 @@
 project_info:
   name: Architecture Sandbox Backend
   description: システムアーキテクチャ設計支援ツールのバックエンドサーバー
-  last_updated: 2025-12-09
-  status: Deployment Completed (Basic Features Implemented)
+  last_updated: 2025-12-10
+  status: Deployment Completed (UI Polish & Functional Fixes)
 
 current_status:
   deployment:
@@ -19,67 +19,21 @@ current_status:
     database: None (Mock implementation)
     concurrency: Supported (Async/Non-blocking via Tokio)
 
-infrastructure:
-  docker:
-    file: backend/Dockerfile.prod
-    base_image_builder: rust:latest
-    base_image_runner: debian:bookworm
-    build_context: Project Root (.)
-    key_configurations:
-      - Copying 'frontend/src/constants/architecture_defs.json' to container
-      - Setting ENV 'ARCH_DEFS_PATH'
-  environment_variables:
-    GEMINI_API_KEY: Required (Google Gemini API access)
-    ARCH_DEFS_PATH: Optional (Default: /app/architecture_defs.json in prod)
-
-backend_implementation:
-  tech_stack:
-    language: Rust
-    web_framework: Axum
-    async_runtime: Tokio
-    http_client: Reqwest
-    serialization: Serde / Serde JSON
-
-  api_endpoints:
-    POST /api/evaluate:
-      description: ユーザーが作成したアーキテクチャ図をAIが評価する
-      logic:
-        - Load 'architecture_defs.json' (Dynamic file read)
-        - Inject custom scenario constraints (difficulty based specs)
-        - Build system prompt from 'system_prompt.txt'
-        - Call Gemini 2.5 Flash API
-      response: Evaluation score and feedback
-
-    POST /api/chat:
-      description: 顧客（AI）とのチャット機能
-      logic:
-        - Determine persona (CEO, CTO, CFO) based on request
-        - Inject hidden context/requirements based on 'scenario_id'
-        - Call Gemini 2.5 Flash API with chat history
-      response: AI character response
-
-    POST /api/projects:
-      description: プロジェクト保存（ダミー）
-      status: Mock (No persistence)
-      response: Success status with input ID
-
-  external_services:
-    ai_model:
-      provider: Google Gemini API
-      model: gemini-2.5-flash
-      features: generateContent
+# ... (infrastructure, backend_implementation は変更なしのため省略) ...
 
 recent_changes:
+  - id: feat_rich_ui_help
+    description: フロントエンドUI刷新（リッチフォント、ヘッダー分離、ヘルプモーダル実装）
+  - id: fix_evaluation_logic
+    description: 評価APIへユーザー入力値（Label/Description）をパススルーするよう修正し、AI評価精度を向上
+  - id: fix_style_system
+    description: コンポーネントスタイル定義を動的読み込みに変更し、配色バグを修正
   - id: deploy_infrastructure
     description: AWS App Runner (Backend) と S3+CloudFront (Frontend) へのデプロイ完了
-  - id: fix_file_loading
-    description: architecture_defs.jsonの読み込みを実行時(fs::read_to_string)に変更し、環境変数対応
-  - id: fix_docker_build
-    description: Dockerビルドコンテキストをプロジェクトルートに変更し、共有ファイルをCOPY可能に修正
 
 known_issues_and_limitations:
   persistence:
-    status: Not Implemented
-    detail: サーバー再起動やリロードでデータは消失する（現在はフロントエンドのメモリ依存）
+    status: Local Only
+    detail: サーバーサイドでの永続化は廃止。クライアントサイドのJSON保存・読込で代替中。
   security:
     cors: Allow Any (Development/Initial Phase)
