@@ -218,6 +218,7 @@ const scoreValueStyle: React.CSSProperties = {
 
 const contentStyle: React.CSSProperties = {
   display: "flex",
+  paddingBottom: "80px",
   flexDirection: "column",
   gap: "30px",
 };
