@@ -4,9 +4,11 @@ mod infrastructure;
 use axum::{
     Json, Router,
     http::Method,
-    routing::{get, post},
     response::IntoResponse,
+    routing::{get, post},
 };
+use reqwest::header::HeaderValue;
+use std::env;
 use tower_http::cors::{Any, CorsLayer};
 
 use domain::model::chat::ChatRequest;
@@ -16,9 +18,16 @@ use infrastructure::gemini::client as gemini_client;
 async fn main() {
     println!("Starting server without Database...");
 
+    let frontend_origin =
+        env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
+
     // 2. CORS設定
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(
+            frontend_origin
+                .parse::<HeaderValue>()
+                .expect("Invalid FRONTEND_ORIGIN value"),
+        )
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(Any);
 
@@ -74,7 +83,9 @@ async fn handle_chat(Json(payload): Json<ChatRequest>) -> impl IntoResponse {
 async fn mock_save_project(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
     println!("Mock Save Project: {:?}", payload.get("title"));
     println!("(Database is disabled, so data is not persisted)");
-    
+
     // 成功レスポンスを返す
-    Json(serde_json::json!({ "status": "success", "id": payload["id"], "message": "Saved to session (mock)" }))
+    Json(
+        serde_json::json!({ "status": "success", "id": payload["id"], "message": "Saved to session (mock)" }),
+    )
 }

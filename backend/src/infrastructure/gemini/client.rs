@@ -70,7 +70,7 @@ fn build_system_prompt() -> String {
         Ok(json_str) => {
             let defs: ArchitectureDefs =
                 serde_json::from_str(&json_str).expect("Failed to parse architecture_defs.json");
-        
+
             let mut components = String::new();
             for category in defs.categories {
                 for item in category.items {
@@ -78,7 +78,7 @@ fn build_system_prompt() -> String {
                     components.push_str(&format!("    - \"{}\"\n", item.type_name));
                 }
             }
-        
+
             // テンプレート内のプレースホルダーを置換
             template.replace("{{AVAILABLE_COMPONENTS}}", &components)
         }
@@ -95,8 +95,12 @@ pub fn get_architecture_defs_json() -> Result<String, Box<dyn std::error::Error>
     let file_path = env::var("ARCH_DEFS_PATH").unwrap_or(default_path.to_string());
 
     // 実行時にファイルを読み込む
-    let json_str = fs::read_to_string(&file_path)
-        .map_err(|e| format!("Failed to read architecture_defs.json from '{}': {}", file_path, e))?;
+    let json_str = fs::read_to_string(&file_path).map_err(|e| {
+        format!(
+            "Failed to read architecture_defs.json from '{}': {}",
+            file_path, e
+        )
+    })?;
 
     Ok(json_str)
 }
@@ -278,10 +282,13 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     let mut full_prompt = String::new();
     // ★修正箇所: system_instruction ではなく final_system_instruction を使用する
     full_prompt.push_str(&final_system_instruction);
-    
+
     // デバッグ出力
-    println!("--- Full System Prompt ---\n{}\n--------------------------", &full_prompt);
-    
+    println!(
+        "--- Full System Prompt ---\n{}\n--------------------------",
+        &full_prompt
+    );
+
     full_prompt.push_str("\n\n--- 会話履歴 ---\n");
 
     // 会話履歴の構築
