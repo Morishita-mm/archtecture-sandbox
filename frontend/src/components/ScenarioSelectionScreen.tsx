@@ -1,10 +1,11 @@
-// src/components/ScenarioSelectionScreen.tsx
+// frontend/src/components/ScenarioSelectionScreen.tsx
 
 import React from "react";
 import { SCENARIOS } from "../scenarios";
 import type { Scenario, ProjectSaveData } from "../types";
 import { FaCog, FaLightbulb } from "react-icons/fa";
 import { BiFolderOpen } from "react-icons/bi";
+import { loadProjectFromLocalFile } from "../utils/fileHandler"; // ★ 追加
 
 interface ScenarioSelectionScreenProps {
   onSelectScenario: (scenario: Scenario) => void;
@@ -14,44 +15,25 @@ interface ScenarioSelectionScreenProps {
 export const ScenarioSelectionScreen: React.FC<
   ScenarioSelectionScreenProps
 > = ({ onSelectScenario, onProjectLoad }) => {
-  const onLoadProject = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // ★ ロジックが大幅に簡略化されました
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64EncodedContent = e.target?.result as string;
-
-      try {
-        const decodedJsonString = decodeURIComponent(
-          escape(atob(base64EncodedContent))
-        );
-        const loadedData = JSON.parse(decodedJsonString);
-
-        if (
-          typeof loadedData.version !== "string" ||
-          typeof loadedData.projectId !== "string" ||
-          typeof loadedData.scenario !== "object" ||
-          !Array.isArray(loadedData.diagram?.nodes) ||
-          !Array.isArray(loadedData.diagram?.edges) ||
-          !Array.isArray(loadedData.chatHistory)
-        ) {
-          throw new Error("プロジェクトファイルの構造が不正です。");
-        }
-
-        const confirmedData = loadedData as ProjectSaveData;
-        onProjectLoad(confirmedData);
-      } catch (error) {
-        console.error("Load Error:", error);
-        alert(
-          `ファイルの読み込みに失敗しました。\n\n詳細: ${
-            error instanceof Error ? error.message : "ファイル形式が不正です。"
-          }`
-        );
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = "";
+    try {
+      const data = await loadProjectFromLocalFile(file);
+      onProjectLoad(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "ファイルの読み込みに失敗しました。"
+      );
+    } finally {
+      event.target.value = ""; // リセット
+    }
   };
 
   const containerStyle: React.CSSProperties = {
@@ -100,7 +82,7 @@ export const ScenarioSelectionScreen: React.FC<
         <input
           type="file"
           accept=".json"
-          onChange={onLoadProject}
+          onChange={handleFileChange} // ★ ハンドラ名を変更
           style={{ display: "none" }}
           id="file-load-input-welcome"
         />
@@ -118,11 +100,9 @@ export const ScenarioSelectionScreen: React.FC<
             display: "flex",
             alignItems: "center",
             gap: "8px",
-
             transition:
               "transform 0.2s, box-shadow 0.2s, background-color 0.2s",
           }}
-
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-3px)";
             e.currentTarget.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.15)";

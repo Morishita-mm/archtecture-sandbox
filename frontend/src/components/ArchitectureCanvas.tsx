@@ -29,6 +29,7 @@ import { ChatInterface } from "./ChatInterface";
 import { MemoPad } from "./MemoPad";
 import { EvaluationPanel } from "./EvaluationPanel";
 import { v4 as uuidv4 } from "uuid";
+import { saveProjectToLocalFile } from "../utils/fileHandler"; // ★ 追加
 
 interface ArchitectureCanvasProps {
   selectedScenario: Scenario;
@@ -62,22 +63,19 @@ function ArchitectureFlow({
   );
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [memo, setMemo] = useState<string>("");
-
   const [evaluationResult, setEvaluationResult] =
     useState<EvaluationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
   const projectIdRef = useRef<string>(uuidv4());
   const [isSaving, setIsSaving] = useState(false);
-
   const [projectVersion, setProjectVersion] = useState<string>("1.0");
 
   const currentScenario = selectedScenario;
 
   useEffect(() => {
-    // 1. ロードデータがある場合: 全てのStateを復元
     if (loadedProjectData) {
       setNodes(loadedProjectData.diagram.nodes as Node[]);
+
       setEdges(
         loadedProjectData.diagram.edges.map((e) => ({
           id: e.id || `e_${e.source}-${e.target}`,
@@ -85,6 +83,7 @@ function ArchitectureFlow({
           target: e.target,
         })) as Edge[]
       );
+
       setChatMessages(loadedProjectData.chatHistory);
       setMemo(loadedProjectData.memo);
 
@@ -94,20 +93,17 @@ function ArchitectureFlow({
       }
 
       const loadedVer = parseFloat(loadedProjectData.version) || 1.0;
-      const nextVer = (loadedVer + 1.0).toFixed(1); // 小数点1桁まで維持
+      const nextVer = (loadedVer + 1.0).toFixed(1);
       setProjectVersion(nextVer);
 
       return;
     }
 
-    // 2. ロードデータがなく、新規開始の場合
     if (chatMessages.length === 0) {
       setProjectVersion("1.0");
 
       let initialMessages: ChatMessage[];
-
       if (currentScenario.isCustom) {
-        // カスタムシナリオ初期化（既存ロジック）
         const difficultySpecs = {
           small: {
             scale: "小規模（個人開発・社内ツール）",
@@ -130,9 +126,7 @@ function ArchitectureFlow({
               "単一障害点(SPOF)の完全排除と、データロス発生時の法的リスク回避",
           },
         };
-
         const spec = difficultySpecs[currentScenario.difficulty || "medium"];
-
         const hiddenSystemPrompt = `
 ---
 Role: System Client
@@ -173,7 +167,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
           },
         ];
       } else {
-        // デフォルトシナリオ初期化
         initialMessages = [
           {
             role: "model",
@@ -181,7 +174,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
           },
         ];
       }
-
       setChatMessages(initialMessages);
     }
   }, [selectedScenario.id, loadedProjectData]);
@@ -190,24 +182,20 @@ Please start the conversation by acknowledging the request for "${currentScenari
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
-
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-
       const type = event.dataTransfer.getData("application/reactflow/type");
       const label = event.dataTransfer.getData("application/reactflow/label");
       const color = event.dataTransfer.getData("application/reactflow/color");
       const bgColor = event.dataTransfer.getData(
         "application/reactflow/bgcolor"
       );
-
       if (!reactFlowWrapper.current) return;
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
-
       const newNode: Node = {
         id: getId(),
         type,
@@ -225,7 +213,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
           color: "#333",
         },
       };
-
       setNodes((nds) => nds.concat(newNode));
     },
     [screenToFlowPosition, setNodes]
@@ -234,14 +221,11 @@ Please start the conversation by acknowledging the request for "${currentScenari
   const onEvaluate = useCallback(async () => {
     const currentNodes = getNodes();
     const currentEdges = getEdges();
-
     if (currentNodes.length === 0) {
       alert("コンポーネントを配置してください");
       return;
     }
-
     setIsLoading(true);
-
     const designData = {
       scenario: currentScenario,
       nodes: currentNodes.map((n) => ({
@@ -249,23 +233,16 @@ Please start the conversation by acknowledging the request for "${currentScenari
         type: n.data.label,
         position: n.position,
       })),
-      edges: currentEdges.map((e) => ({
-        source: e.source,
-        target: e.target,
-      })),
+      edges: currentEdges.map((e) => ({ source: e.source, target: e.target })),
     };
-
     try {
       const response = await fetch(`${API_BASE_URL}/api/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(designData),
       });
-
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const result: EvaluationResult = await response.json();
       setEvaluationResult(result);
       setActiveTab("evaluate");
@@ -277,7 +254,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
     }
   }, [getNodes, getEdges, currentScenario]);
 
-  // ★ onSaveProject: ローカル保存ロジック (評価結果も含める)
   const onSaveProject = useCallback(async () => {
     setIsSaving(true);
     const currentNodes = getNodes();
@@ -308,26 +284,15 @@ Please start the conversation by acknowledging the request for "${currentScenari
         evaluation: evaluationResult,
       };
 
-      const jsonString = JSON.stringify(payload, null, 2);
-      const base64Encoded = btoa(unescape(encodeURIComponent(jsonString)));
-
-      // ★ ファイル名の生成: <タイトル>_v<バージョン>.json
-      const safeTitle = currentScenario.title.trim() || "untitled";
+      const safeTitle =
+        currentScenario.title.trim() ||
+        "untitled";
       const filename = `${safeTitle}_v${projectVersion}.json`;
 
-      const blob = new Blob([base64Encoded], {
-        type: "application/json;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // ★ 共通ロジックを使用
+      saveProjectToLocalFile(payload, filename);
 
-      alert(`「${filename}」を保存しました。`);
+      alert(`「${filename}」をローカルに保存しました。`);
 
       setProjectVersion((currentVer) => {
         const v = parseFloat(currentVer) || 1.0;
@@ -385,8 +350,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
         <h1 style={{ fontSize: "1.2em", margin: 0 }}>
           {currentScenario.title}
         </h1>
-
-        {/* 保存ボタンのみ配置 */}
         <button
           onClick={onSaveProject}
           disabled={isSaving}
@@ -410,7 +373,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
             style={activeTab === "chat" ? activeTabStyle : tabStyle}
             onClick={() => setActiveTab("chat")}
           >
-            <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />
+            <BiChat style={{ marginRight: "6px", verticalAlign: "middle" }} />{" "}
             要件定義・交渉
           </button>
           <button
@@ -419,7 +382,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
           >
             <BiNetworkChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
-            />
+            />{" "}
             アーキテクチャ設計
           </button>
           <button
@@ -428,13 +391,12 @@ Please start the conversation by acknowledging the request for "${currentScenari
           >
             <BiBarChart
               style={{ marginRight: "6px", verticalAlign: "middle" }}
-            />
+            />{" "}
             評価結果
           </button>
         </div>
 
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {/* メインエリアの表示ロジックは変更なし */}
           <div
             style={{
               flex: 1,
@@ -452,7 +414,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
                 />
               </div>
             )}
-
             {activeTab === "evaluate" && (
               <div style={{ width: "100%", height: "100%" }}>
                 <EvaluationPanel
@@ -462,7 +423,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
                 />
               </div>
             )}
-
             <div
               style={{
                 display: activeTab === "design" ? "flex" : "none",
@@ -511,7 +471,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
               </div>
             </div>
           </div>
-
           <MemoPad value={memo} onChange={setMemo} />
         </div>
       </>
@@ -519,7 +478,6 @@ Please start the conversation by acknowledging the request for "${currentScenari
   );
 }
 
-// ★ エクスポート設定の変更
 export function ArchitectureCanvas({
   selectedScenario,
   onBackToSelection,
@@ -536,7 +494,6 @@ export function ArchitectureCanvas({
   );
 }
 
-// Styles
 const tabBarStyle: React.CSSProperties = {
   display: "flex",
   backgroundColor: "#f5f5f5",
@@ -544,7 +501,6 @@ const tabBarStyle: React.CSSProperties = {
   padding: "0 20px",
   flexShrink: 0,
 };
-
 const tabStyle: React.CSSProperties = {
   padding: "15px 30px",
   border: "none",
@@ -554,7 +510,6 @@ const tabStyle: React.CSSProperties = {
   color: "#666",
   borderBottom: "3px solid transparent",
 };
-
 const activeTabStyle: React.CSSProperties = {
   ...tabStyle,
   color: "#2196F3",
