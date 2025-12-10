@@ -14,6 +14,8 @@ import {
   BiRevision,
   BiListUl,
   BiSave,
+  BiShareAlt,
+  BiRocket,
 } from "react-icons/bi";
 
 interface Props {
@@ -21,7 +23,7 @@ interface Props {
   onClose: () => void;
 }
 
-type TabKey = "flow" | "canvas" | "ai" | "evaluation";
+type TabKey = "flow" | "canvas" | "ai" | "evaluation" | "share";
 
 export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabKey>("flow");
@@ -34,6 +36,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
     { key: "canvas", label: "キャンバス操作", icon: <BiMouse /> },
     { key: "ai", label: "AI活用のコツ", icon: <BiBot /> },
     { key: "evaluation", label: "評価と改善", icon: <BiBarChart /> },
+    { key: "share", label: "共有と挑戦", icon: <BiShareAlt /> },
   ];
 
   return (
@@ -274,6 +277,51 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   一度で完璧な設計を目指す必要はありません。「設計 → 評価 → 修正
                   →
                   再評価」を繰り返すことで、より良いアーキテクチャに洗練されていきます。
+                </div>
+              </div>
+            )}
+
+            {/* ★追加: 共有と挑戦タブ */}
+            {activeTab === "share" && (
+              <div style={animateInStyle}>
+                <h3 style={contentTitleStyle}>設計を共有して競い合おう</h3>
+                <p>
+                  納得のいく設計ができたら、SNSでシェアして他のエンジニアに
+                  <strong>「挑戦状」</strong>を送りましょう。
+                </p>
+
+                <div style={stepContainerStyle}>
+                  <StepItem number={1} title="結果をシェアする">
+                    評価画面の<strong>「結果をシェア」</strong>
+                    ボタンを押すと、X（旧Twitter）への投稿画面が開きます。
+                    投稿にはスコアと<strong>「挑戦用URL」</strong>が含まれます。
+                  </StepItem>
+                  <StepItem number={2} title="挑戦状を送る">
+                    発行されたURLには、あなたが設計したシナリオの要件（難易度、相手役、そして
+                    <strong>隠しパラメータ</strong>）が全て含まれています。
+                    <br />
+                    このURLを受け取った人は、<strong>全く同じ条件・制約</strong>
+                    で設計に挑戦できます。
+                  </StepItem>
+                  <StepItem number={3} title="設計を見せ合う">
+                    「プロジェクト保存」でダウンロードしたJSONファイルを交換すれば、お互いの設計図を自分の手元で再現・再評価できます。
+                    設計思想の違いを議論してみましょう！
+                  </StepItem>
+                </div>
+
+                <div style={tipBoxStyle}>
+                  <strong
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                    }}
+                  >
+                    <BiRocket size={18} /> Challenge Modeについて:
+                  </strong>
+                  共有URLからアクセスした場合、隠し要件（ユーザー数や予算など）は伏せられた状態でスタートします。
+                  <br />
+                  通常のプレイと同様に、まずはクライアント（AI）へのヒアリングから始めてください。
                 </div>
               </div>
             )}
