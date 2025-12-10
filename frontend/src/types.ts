@@ -51,3 +51,35 @@ export interface ChatMessage {
   role: 'user' | 'model' | 'system';
   content: string;
 }
+
+// --- プロジェクト保存のための定義 ---
+export interface SimpleNodeData {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: { label: string };
+  style?: React.CSSProperties;
+}
+
+export interface SimpleEdgeData {
+  id?: string;
+  source: string;
+  target: string;
+}
+
+/**
+ * プロジェクトの保存ファイル全体の構造
+ */
+export interface ProjectSaveData {
+  version: string;
+  timestamp: string;
+  projectId: string;
+  scenario: Scenario;
+  memo: string;
+  diagram: {
+    nodes: SimpleNodeData[];
+    edges: SimpleEdgeData[];
+  };
+  chatHistory: ChatMessage[];
+  evaluation: EvaluationResult | null;
+}

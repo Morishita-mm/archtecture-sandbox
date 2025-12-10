@@ -1,61 +1,84 @@
-import { useState } from 'react';
-import { ArchitectureCanvas } from './components/ArchitectureCanvas';
-import { ScenarioSetup } from './components/ScenarioSetup';
-import type { Scenario } from './types';
-import { ScenarioSelectionScreen } from './components/ScenarioSelectionScreen';
+import { useState } from "react";
+import { ArchitectureCanvas } from "./components/ArchitectureCanvas";
+import { ScenarioSetup } from "./components/ScenarioSetup";
+import type { Scenario, ProjectSaveData } from "./types";
+import { ScenarioSelectionScreen } from "./components/ScenarioSelectionScreen";
 
 // アプリのフェーズを管理するための型
-type AppPhase = 'SCENARIO_SELECTION' | 'CUSTOM_DEFINITION' | 'CANVAS';
+type AppPhase = "SCENARIO_SELECTION" | "CUSTOM_DEFINITION" | "CANVAS";
 
 function App() {
-  const [phase, setPhase] = useState<AppPhase>('SCENARIO_SELECTION'); 
-  const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [phase, setPhase] = useState<AppPhase>("SCENARIO_SELECTION");
+  const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(
+    null
+  );
+
+  // ロードされたプロジェクトデータを保持するState
+  const [loadedProjectData, setLoadedProjectData] =
+    useState<ProjectSaveData | null>(null);
 
   const handleScenarioSelect = (scenario: Scenario) => {
+    // 新規作成時はロードデータをクリア
+    setLoadedProjectData(null);
+
     if (scenario.isCustom) {
       // カスタムシナリオの場合、定義画面へ遷移
       setSelectedScenario(scenario);
-      setPhase('CUSTOM_DEFINITION');
+      setPhase("CUSTOM_DEFINITION");
     } else {
       // デフォルトシナリオの場合、キャンバスへ遷移
       setSelectedScenario(scenario);
-      setPhase('CANVAS');
+      setPhase("CANVAS");
     }
+  };
+
+  // ロード完了ハンドラ
+  const handleProjectLoadComplete = (loadedData: ProjectSaveData) => {
+    // 読み込まれたシナリオとデータをセットし、即座にキャンバスへ遷移
+    setSelectedScenario(loadedData.scenario);
+    setLoadedProjectData(loadedData);
+    setPhase("CANVAS");
   };
 
   const handleCustomDefinitionComplete = (scenario: Scenario) => {
     // カスタム定義が完了したら、キャンバスへ遷移
     setSelectedScenario(scenario);
-    setPhase('CANVAS');
+    setLoadedProjectData(null); // クリア
+    setPhase("CANVAS");
   };
 
   // シナリオ選択画面へ戻るハンドラ
   const handleGoToSelection = () => {
     setSelectedScenario(null);
-    setPhase('SCENARIO_SELECTION');
+    setLoadedProjectData(null); // クリア
+    setPhase("SCENARIO_SELECTION");
   };
 
-
-  if (phase === 'SCENARIO_SELECTION') {
-    return <ScenarioSelectionScreen onSelectScenario={handleScenarioSelect} />;
-  }
-
-  if (phase === 'CUSTOM_DEFINITION' && selectedScenario) {
+  if (phase === "SCENARIO_SELECTION") {
     return (
-      <ScenarioSetup // ★ ScenarioSetup に変更
-        initialScenario={selectedScenario}
-        onConfirm={handleCustomDefinitionComplete} // ★ onConfirm に変更
-        onCancel={handleGoToSelection} // ★ onCancel に変更
+      <ScenarioSelectionScreen
+        onSelectScenario={handleScenarioSelect}
+        onProjectLoad={handleProjectLoadComplete}
       />
     );
   }
 
-  if (phase === 'CANVAS' && selectedScenario) {
-    // ArchitectureCanvasコンポーネントに selectedScenario と onBackToSelection を渡す
+  if (phase === "CUSTOM_DEFINITION" && selectedScenario) {
     return (
-      <ArchitectureCanvas 
-        selectedScenario={selectedScenario} 
-        onBackToSelection={handleGoToSelection} 
+      <ScenarioSetup
+        initialScenario={selectedScenario}
+        onConfirm={handleCustomDefinitionComplete}
+        onCancel={handleGoToSelection}
+      />
+    );
+  }
+
+  if (phase === "CANVAS" && selectedScenario) {
+    return (
+      <ArchitectureCanvas
+        selectedScenario={selectedScenario}
+        onBackToSelection={handleGoToSelection}
+        loadedProjectData={loadedProjectData}
       />
     );
   }

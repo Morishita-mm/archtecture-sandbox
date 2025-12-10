@@ -1,18 +1,59 @@
-// frontend/src/components/ScenarioSelectionScreen.tsx (新規ファイル)
+// src/components/ScenarioSelectionScreen.tsx
 
 import React from "react";
 import { SCENARIOS } from "../scenarios";
-import type { Scenario } from "../types";
+import type { Scenario, ProjectSaveData } from "../types";
 import { FaCog, FaLightbulb } from "react-icons/fa";
+import { BiFolderOpen } from "react-icons/bi";
 
 interface ScenarioSelectionScreenProps {
   onSelectScenario: (scenario: Scenario) => void;
+  onProjectLoad: (loadedData: ProjectSaveData) => void;
 }
 
 export const ScenarioSelectionScreen: React.FC<
   ScenarioSelectionScreenProps
-> = ({ onSelectScenario }) => {
-  // スタイルは環境に合わせて調整してください（ここでは簡易的なインラインスタイルを使用）
+> = ({ onSelectScenario, onProjectLoad }) => {
+  const onLoadProject = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64EncodedContent = e.target?.result as string;
+
+      try {
+        const decodedJsonString = decodeURIComponent(
+          escape(atob(base64EncodedContent))
+        );
+        const loadedData = JSON.parse(decodedJsonString);
+
+        if (
+          typeof loadedData.version !== "string" ||
+          typeof loadedData.projectId !== "string" ||
+          typeof loadedData.scenario !== "object" ||
+          !Array.isArray(loadedData.diagram?.nodes) ||
+          !Array.isArray(loadedData.diagram?.edges) ||
+          !Array.isArray(loadedData.chatHistory)
+        ) {
+          throw new Error("プロジェクトファイルの構造が不正です。");
+        }
+
+        const confirmedData = loadedData as ProjectSaveData;
+        onProjectLoad(confirmedData);
+      } catch (error) {
+        console.error("Load Error:", error);
+        alert(
+          `ファイルの読み込みに失敗しました。\n\n詳細: ${
+            error instanceof Error ? error.message : "ファイル形式が不正です。"
+          }`
+        );
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  };
+
   const containerStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -36,9 +77,70 @@ export const ScenarioSelectionScreen: React.FC<
 
   return (
     <div style={containerStyle}>
-      <h1 style={{ marginBottom: "40px", fontSize: "2em", color: "#333" }}>
+      <h1
+        style={{
+          marginBottom: "20px",
+          fontSize: "2em",
+          color: "#333",
+          textAlign: "center",
+        }}
+      >
         👋 設計シナリオを選択してください
       </h1>
+
+      <div
+        style={{
+          marginBottom: "40px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          alignItems: "center",
+        }}
+      >
+        <input
+          type="file"
+          accept=".json"
+          onChange={onLoadProject}
+          style={{ display: "none" }}
+          id="file-load-input-welcome"
+        />
+        <label
+          htmlFor="file-load-input-welcome"
+          style={{
+            padding: "12px 25px",
+            borderRadius: "6px",
+            border: "none",
+            backgroundColor: "#6c757d",
+            color: "white",
+            cursor: "pointer",
+            fontWeight: "bold",
+            fontSize: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+
+            transition:
+              "transform 0.2s, box-shadow 0.2s, background-color 0.2s",
+          }}
+
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-3px)";
+            e.currentTarget.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.15)";
+            e.currentTarget.style.backgroundColor = "#5a6268";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "none";
+            e.currentTarget.style.boxShadow = "none";
+            e.currentTarget.style.backgroundColor = "#6c757d";
+          }}
+        >
+          <BiFolderOpen size={20} /> 既存プロジェクトを読み込む
+        </label>
+        <span style={{ color: "#999", fontSize: "0.9em" }}>
+          （ローカルに保存したJSONファイルを読み込んで再開）
+        </span>
+      </div>
+
       <div
         style={{
           display: "flex",
@@ -53,7 +155,6 @@ export const ScenarioSelectionScreen: React.FC<
             key={scenario.id}
             style={cardStyle}
             onClick={() => onSelectScenario(scenario)}
-            // 簡易ホバー効果
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-5px)";
               e.currentTarget.style.boxShadow =
