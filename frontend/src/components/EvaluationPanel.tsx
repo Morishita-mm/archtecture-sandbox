@@ -8,7 +8,9 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
-} from "recharts"; // ★追加
+} from "recharts";
+// ★追加: アイコンのインポート
+import { BiSearchAlt, BiRevision, BiBot, BiBulb } from "react-icons/bi";
 import type { EvaluationResult } from "../types";
 
 interface Props {
@@ -23,11 +25,20 @@ export const EvaluationPanel: React.FC<Props> = ({
   isLoading,
 }) => {
   if (!result) {
-    // ... (未評価時の表示コードは既存のまま) ...
     return (
       <div style={emptyContainerStyle}>
         <div style={emptyCardStyle}>
-          <div style={{ fontSize: "64px", marginBottom: "20px" }}>🧐</div>
+          <div
+            style={{
+              fontSize: "64px",
+              marginBottom: "20px",
+              color: "#ccc",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <BiSearchAlt />
+          </div>
           <h2 style={{ margin: "0 0 10px 0", color: "#333" }}>
             まだ評価結果がありません
           </h2>
@@ -50,15 +61,12 @@ export const EvaluationPanel: React.FC<Props> = ({
     );
   }
 
-  // ★追加: スコアに応じた色決定
   const getScoreColor = (score: number) => {
     if (score >= 80) return "#4CAF50";
     if (score >= 50) return "#FF9800";
     return "#F44336";
   };
 
-  // ★追加: チャット用データ変換
-  // result.details が存在しない場合（古いAPIレスポンス等）のガードを入れておくと安全です
   const details = result.details || {
     availability: 0,
     scalability: 0,
@@ -67,8 +75,7 @@ export const EvaluationPanel: React.FC<Props> = ({
     costEfficiency: 0,
     feasibility: 0,
   };
-  
-  // 総合スコア（後方互換性のため score か totalScore を使用）
+
   const totalScore = result.totalScore || result.score || 0;
 
   const chartData = [
@@ -84,8 +91,18 @@ export const EvaluationPanel: React.FC<Props> = ({
     <div style={containerStyle}>
       <div style={headerStyle}>
         <h2 style={{ margin: 0 }}>アーキテクチャ評価レポート</h2>
-        <button onClick={onEvaluate} disabled={isLoading} style={retryButtonStyle}>
-          {isLoading ? "再評価中..." : "🔄 再評価する"}
+        <button
+          onClick={onEvaluate}
+          disabled={isLoading}
+          style={retryButtonStyle}
+        >
+          {isLoading ? (
+            "再評価中..."
+          ) : (
+            <>
+              <BiRevision size={18} /> 再評価する
+            </>
+          )}
         </button>
       </div>
 
@@ -120,7 +137,9 @@ export const EvaluationPanel: React.FC<Props> = ({
 
       <div style={contentStyle}>
         <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>🤖 AIからのフィードバック</h3>
+          <h3 style={sectionTitleStyle}>
+            <BiBot size={24} color="#2196F3" /> AIからのフィードバック
+          </h3>
           <div style={markdownContainerStyle}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {result.feedback}
@@ -129,7 +148,9 @@ export const EvaluationPanel: React.FC<Props> = ({
         </div>
 
         <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>💡 改善のための提案</h3>
+          <h3 style={sectionTitleStyle}>
+            <BiBulb size={24} color="#FFC107" /> 改善のための提案
+          </h3>
           <div style={markdownContainerStyle}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {result.improvement}
@@ -142,7 +163,6 @@ export const EvaluationPanel: React.FC<Props> = ({
 };
 
 // --- Styles ---
-// 既存のスタイルに加えて、レイアウト用のスタイルを追加
 const containerStyle: React.CSSProperties = {
   padding: "30px",
   height: "100%",
@@ -161,7 +181,7 @@ const topSectionStyle: React.CSSProperties = {
   display: "flex",
   gap: "20px",
   marginBottom: "30px",
-  height: "300px", // チャートの高さを確保
+  height: "300px",
 };
 
 const scoreBoxStyle: React.CSSProperties = {
@@ -176,14 +196,13 @@ const scoreBoxStyle: React.CSSProperties = {
 };
 
 const chartBoxStyle: React.CSSProperties = {
-  flex: 2, // チャートの方を広く取る
+  flex: 2,
   backgroundColor: "white",
   borderRadius: "12px",
   padding: "10px",
   boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
 };
 
-// ... 以下、既存のスタイル定義 (emptyContainerStyle, scoreLabelStyleなどはそのまま利用) ...
 const emptyContainerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "center",
@@ -232,6 +251,9 @@ const sectionTitleStyle: React.CSSProperties = {
   color: "#333",
   borderLeft: "4px solid #2196F3",
   paddingLeft: "10px",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
 };
 
 const markdownContainerStyle: React.CSSProperties = {
@@ -261,4 +283,7 @@ const retryButtonStyle: React.CSSProperties = {
   borderRadius: "6px",
   cursor: "pointer",
   fontSize: "14px",
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
 };
