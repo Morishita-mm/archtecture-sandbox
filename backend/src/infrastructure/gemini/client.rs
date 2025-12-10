@@ -91,8 +91,7 @@ fn build_system_prompt() -> String {
 
 // アーキテクチャ定義ファイル読み込み
 pub fn get_architecture_defs_json() -> Result<String, Box<dyn std::error::Error>> {
-    let default_path = "../../../../frontend/src/constants/architecture_defs.json";
-    let file_path = env::var("ARCH_DEFS_PATH").unwrap_or(default_path.to_string());
+    let file_path = env::var("ARCH_DEFS_PATH").unwrap_or(env::var("ARCH_DEFS_PATH_DEV")?);
 
     // 実行時にファイルを読み込む
     let json_str = fs::read_to_string(&file_path).map_err(|e| {

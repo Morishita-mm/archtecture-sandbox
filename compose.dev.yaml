@@ -4,11 +4,13 @@ services:
       - .:/workspace:cached
       - cargo-cache:/usr/local/cargo/registry
       - target-cache:/workspace/backend/target
+      - ./frontend/src/constants:/frontend_constants
     working_dir: /workspace/backend
     command: ["cargo", "watch", "-x", "run"]
     environment:
       - RUST_BACKTRACE=1
       - FRONTEND_ORIGIN=http://localhost:5173
+      - ARCH_DEFS_PATH_DEV=/frontend_constants/architecture_defs.json
 
   frontend:
     volumes:
