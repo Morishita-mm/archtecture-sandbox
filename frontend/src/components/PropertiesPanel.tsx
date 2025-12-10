@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { Node } from "reactflow";
 import { BiX } from "react-icons/bi";
 import type { AppNodeData } from "../types";
@@ -9,25 +9,114 @@ interface Props {
   onClose: () => void;
 }
 
-export const PropertiesPanel: React.FC<Props> = ({ selectedNode, onChange, onClose }) => {
+export const PropertiesPanel: React.FC<Props> = ({
+  selectedNode,
+  onChange,
+  onClose,
+}) => {
+  // パネルの位置管理 (nullの場合は初期位置 = 右上)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [isDragging, setIsDragging] = useState(false);
+
+  // ドラッグ計算用の一時保存変数
+  const dragStartOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const parentOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const panelRef = useRef<HTMLDivElement>(null);
+
   if (!selectedNode) return null;
 
   const { data, id } = selectedNode;
 
-  // 入力変更ハンドラ
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(id, { ...data, label: e.target.value });
   };
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
     onChange(id, { ...data, description: e.target.value });
   };
 
+  // --- ドラッグ処理の開始 ---
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (panelRef.current) {
+      // 1. パネル自身の画面上の位置
+      const rect = panelRef.current.getBoundingClientRect();
+
+      // 2. 親要素（基準となるコンテナ）の画面上の位置を取得
+      const parent = panelRef.current.offsetParent as HTMLElement;
+      const pRect = parent
+        ? parent.getBoundingClientRect()
+        : { left: 0, top: 0 };
+
+      // 3. 計算用データを保存
+      parentOffset.current = { x: pRect.left, y: pRect.top };
+
+      // 「パネルの左上」から「マウス」までの距離を記録
+      dragStartOffset.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+
+      // 4. 現在の位置を「親要素基準の相対座標」に変換してセット
+      setPosition({
+        x: rect.left - pRect.left,
+        y: rect.top - pRect.top,
+      });
+
+      setIsDragging(true);
+    }
+  };
+
+  // --- ドラッグ中・終了の処理 ---
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+
+      const newX =
+        e.clientX - parentOffset.current.x - dragStartOffset.current.x;
+      const newY =
+        e.clientY - parentOffset.current.y - dragStartOffset.current.y;
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // 現在のスタイルを計算
+  const currentPanelStyle: React.CSSProperties = {
+    ...panelStyle,
+    ...(position ? { top: position.y, left: position.x, right: "auto" } : {}),
+    cursor: isDragging ? "grabbing" : "auto",
+  };
+
   return (
-    <div style={panelStyle}>
-      <div style={headerStyle}>
-        <span style={{ fontWeight: "bold" }}>プロパティ編集</span>
-        <button onClick={onClose} style={closeButtonStyle}>
+    <div ref={panelRef} style={currentPanelStyle}>
+      <div style={headerStyle} onMouseDown={handleMouseDown}>
+        <span style={{ fontWeight: "bold", cursor: "grab" }}>
+          プロパティ編集
+        </span>
+        <button
+          onClick={onClose}
+          style={closeButtonStyle}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <BiX size={20} />
         </button>
       </div>
@@ -64,7 +153,7 @@ export const PropertiesPanel: React.FC<Props> = ({ selectedNode, onChange, onClo
   );
 };
 
-// --- Styles ---
+// --- Styles (変更なし) ---
 const panelStyle: React.CSSProperties = {
   position: "absolute",
   top: 20,
@@ -74,7 +163,7 @@ const panelStyle: React.CSSProperties = {
   borderRadius: 8,
   boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
   border: "1px solid #ddd",
-  zIndex: 10,
+  zIndex: 100,
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
@@ -87,6 +176,8 @@ const headerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
+  cursor: "grab",
+  userSelect: "none",
 };
 
 const closeButtonStyle: React.CSSProperties = {
