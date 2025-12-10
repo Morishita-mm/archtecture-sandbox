@@ -13,6 +13,7 @@ import {
   BiCheckCircle,
   BiRevision,
   BiListUl,
+  BiSave,
 } from "react-icons/bi";
 
 interface Props {
@@ -27,7 +28,7 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  // タブの定義 (ラベルから絵文字を除去)
+  // タブの定義
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "flow", label: "基本的な流れ", icon: <BiListUl /> },
     { key: "canvas", label: "キャンバス操作", icon: <BiMouse /> },
@@ -49,9 +50,9 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* メインエリア（2カラム） */}
+        {/* メインエリア */}
         <div style={bodyStyle}>
-          {/* 左サイドバー（メニュー） */}
+          {/* 左サイドバー */}
           <div style={sidebarStyle}>
             {tabs.map((tab) => (
               <button
@@ -85,6 +86,26 @@ export const HelpModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   <StepItem number={4} title="評価・改善 (Evaluate)">
                     AIアーキテクトに設計を評価してもらい、フィードバックを元に修正します。
                   </StepItem>
+                </div>
+
+                <div style={tipBoxStyle}>
+                  <strong
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      marginBottom: "5px",
+                    }}
+                  >
+                    <BiSave size={18} /> 保存と中断について:
+                  </strong>
+                  作業内容は画面右上の
+                  <strong style={{ color: "#28a745" }}>
+                    「プロジェクト保存」
+                  </strong>
+                  ボタンから、いつでもローカルファイル（.json）として保存できます。
+                  <br />
+                  保存したファイルは、トップ画面の「既存プロジェクトを読み込む」から読み込むことで、続きから再開可能です。
                 </div>
               </div>
             )}
