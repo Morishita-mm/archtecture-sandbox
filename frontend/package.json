@@ -36,5 +36,8 @@
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"
+  },
+  "scripts": {
+    "deploy": "aws s3 sync ./dist s3://architecture-sandbox-frontend-f0e9c602 && aws cloudfront create-invalidation --distribution-id E2RYCC937BOQ6J --paths '/*'"
   }
 }
