@@ -136,9 +136,14 @@ fn get_difficulty_specs(difficulty: &str) -> serde_json::Value {
 // --- 評価関数 ---
 pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
+    let base_url = env::var("AI_API_BASE_URL")
+        .unwrap_or_else(|_| "https://generativelanguage.googleapis.com".to_string());
+
+    let model_name = env::var("AI_MODEL_NAME").unwrap_or_else(|_| "gemini-2.5-flash".to_string());
+
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
-        api_key
+        "{}/v1beta/models/{}:generateContent?key={}",
+        base_url, model_name, api_key
     );
 
     let mut final_json = json_data.clone();
@@ -217,9 +222,14 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
 
 pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
+    let base_url = env::var("AI_API_BASE_URL")
+        .unwrap_or_else(|_| "https://generativelanguage.googleapis.com".to_string());
+
+    let model_name = env::var("AI_MODEL_NAME").unwrap_or_else(|_| "gemini-2.5-flash".to_string());
+
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={}",
-        api_key
+        "{}/v1beta/models/{}:generateContent?key={}",
+        base_url, model_name, api_key
     );
 
     // 1. ベースとなるシステム指示の取得
