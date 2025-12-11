@@ -67,7 +67,7 @@ async fn evaluate_architecture(Json(payload): Json<serde_json::Value>) -> impl I
         }
         Err(e) => {
             eprintln!("Gemini Error: {}", e);
-            Json(serde_json::json!({ "score": 0, "feedback": "Error", "status": "error" }))
+            Json(serde_json::json!({ "score": 0, "feedback": e.to_string(), "status": "error" }))
         }
     }
 }
@@ -78,7 +78,7 @@ async fn handle_chat(Json(payload): Json<ChatRequest>) -> impl IntoResponse {
         Ok(reply) => Json(serde_json::json!({ "reply": reply, "status": "success" })),
         Err(e) => {
             eprintln!("Chat Error: {}", e);
-            Json(serde_json::json!({ "reply": "Error", "status": "error" }))
+            Json(serde_json::json!({ "reply": e.to_string(), "status": "error" }))
         }
     }
 }

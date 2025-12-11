@@ -1,10 +1,13 @@
 #![allow(clippy::collapsible_if)]
 
 use reqwest::Client;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env;
 use std::fs;
+use std::time::Duration;
+use tokio::time::sleep;
 
 use crate::domain::model::chat::ChatRequest;
 
@@ -91,7 +94,7 @@ fn build_system_prompt() -> String {
 
 // アーキテクチャ定義ファイル読み込み
 pub fn get_architecture_defs_json() -> Result<String, Box<dyn std::error::Error>> {
-    let file_path = env::var("ARCH_DEFS_PATH").unwrap_or(env::var("ARCH_DEFS_PATH_DEV")?);
+    let file_path = env::var("ARCH_DEFS_PATH").or_else(|_| env::var("ARCH_DEFS_PATH_DEV"))?;
 
     // 実行時にファイルを読み込む
     let json_str = fs::read_to_string(&file_path).map_err(|e| {
@@ -130,6 +133,82 @@ fn get_difficulty_specs(difficulty: &str) -> serde_json::Value {
              "budget": "Standard",
              "availability": "High"
         }),
+    }
+}
+
+async fn send_with_retry(
+    client: &Client,
+    url: &str,
+    request_body: &GeminiRequest,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let max_retries = 3; // 最大3回リトライ（計4回試行）
+    let mut attempt = 0;
+
+    loop {
+        attempt += 1;
+        let res_result = client.post(url).json(request_body).send().await;
+
+        match res_result {
+            Ok(res) => {
+                let status = res.status();
+                if status.is_success() {
+                    let body_text = res.text().await?;
+                    // Geminiのレスポンスパース処理
+                    let response_json: GeminiResponse = serde_json::from_str(&body_text)?;
+                    if let Some(candidates) = response_json.candidates {
+                        if let Some(first) = candidates.first() {
+                            if let Some(content) = &first.content {
+                                if let Some(parts) = &content.parts {
+                                    if let Some(part) = parts.first() {
+                                        return Ok(part.text.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return Err("AIからの応答が空でした。".into());
+                } else {
+                    // エラーハンドリング
+                    if attempt <= max_retries
+                        && (status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error())
+                    {
+                        // 429(レート制限) または 500系エラー(503含む) の場合はリトライ
+                        let wait_time = Duration::from_secs(2_u64.pow(attempt - 1)); // 1秒, 2秒, 4秒...
+                        eprintln!(
+                            "Gemini API Error ({}). Retrying in {}s... (Attempt {}/{})",
+                            status,
+                            wait_time.as_secs(),
+                            attempt,
+                            max_retries + 1
+                        );
+                        sleep(wait_time).await;
+                        continue;
+                    } else {
+                        // リトライ対象外、または回数切れ
+                        let error_body = res.text().await.unwrap_or_default();
+                        eprintln!("Gemini API Final Error: {} - {}", status, error_body);
+                        return Err("アクセスが集中しています。しばらく時間を置いてから再度お試しください。".into());
+                    }
+                }
+            }
+            Err(e) => {
+                // ネットワークエラー等の場合
+                if attempt <= max_retries {
+                    let wait_time = Duration::from_secs(2_u64.pow(attempt - 1));
+                    eprintln!(
+                        "Network Error ({}). Retrying in {}s...",
+                        e,
+                        wait_time.as_secs()
+                    );
+                    sleep(wait_time).await;
+                    continue;
+                }
+                return Err(
+                    "通信エラーが発生しました。ネットワーク状況を確認して再度お試しください。"
+                        .into(),
+                );
+            }
+        }
     }
 }
 
@@ -191,33 +270,7 @@ pub async fn evaluate_with_gemini(json_data: &Value) -> Result<String, Box<dyn s
     };
 
     let client = Client::new();
-    let res = client.post(&url).json(&request_body).send().await?;
-
-    // エラーハンドリング
-    let status = res.status();
-    if !status.is_success() {
-        let error_body = res.text().await?;
-        eprintln!("Gemini API Error! Status: {}", status);
-        eprintln!("Error Body: {}", error_body);
-        return Err(format!("Gemini API error: {}", status).into());
-    }
-
-    let body_text = res.text().await?;
-    let response_json: GeminiResponse = serde_json::from_str(&body_text)?;
-
-    if let Some(candidates) = response_json.candidates {
-        if let Some(first) = candidates.first() {
-            if let Some(content) = &first.content {
-                if let Some(parts) = &content.parts {
-                    if let Some(part) = parts.first() {
-                        return Ok(part.text.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    Err("Failed to parse Gemini response".into())
+    send_with_retry(&client, &url, &request_body).await
 }
 
 pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std::error::Error>> {
@@ -325,33 +378,7 @@ pub async fn chat_with_customer(req: &ChatRequest) -> Result<String, Box<dyn std
     };
 
     let client = Client::new();
-    let res = client.post(&url).json(&request_body).send().await?;
-
-    // エラーハンドリング
-    let status = res.status();
-    if !status.is_success() {
-        let error_body = res.text().await?;
-        eprintln!("Gemini API Error! Status: {}", status);
-        eprintln!("Error Body: {}", error_body);
-        return Err(format!("Gemini API error: {}", status).into());
-    }
-
-    let body_text = res.text().await?;
-    let response_json: GeminiResponse = serde_json::from_str(&body_text)?;
-
-    if let Some(candidates) = response_json.candidates {
-        if let Some(first) = candidates.first() {
-            if let Some(content) = &first.content {
-                if let Some(parts) = &content.parts {
-                    if let Some(part) = parts.first() {
-                        return Ok(part.text.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    Err("No response".into())
+    send_with_retry(&client, &url, &request_body).await
 }
 
 fn get_partner_instruction(role: &str) -> &'static str {
