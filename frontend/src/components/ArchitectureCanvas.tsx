@@ -191,7 +191,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
   }, [
     selectedScenario.id,
     loadedProjectData,
-    chatMessages.length,
+    // chatMessages.length,  <-- ★削除: これがあるとチャット送信のたびに初期化処理が走り、評価画面に飛ばされます
     setNodes,
     setEdges,
     currentScenario.isCustom,
@@ -252,10 +252,10 @@ Please start the conversation by acknowledging the request for "${currentScenari
   // ----------------------------------------------------------------
   const onNodeDragStop: NodeDragHandler = useCallback(
     (_, node) => {
-      // ★修正: グループノード自身は何もしない (type === 'group' で判定)
+      // グループノード自身は何もしない (type === 'group' で判定)
       if (node.type === "group") return;
 
-      // ★修正: 重なっているグループノードを探す (type === 'group' で判定)
+      // 重なっているグループノードを探す (type === 'group' で判定)
       const intersections = getIntersectingNodes(node).filter(
         (n) => n.type === "group"
       );
@@ -354,7 +354,7 @@ Please start the conversation by acknowledging the request for "${currentScenari
       });
 
       const allNodes = getNodes();
-      // ★修正: 重なり判定のターゲットを type === 'group' に限定
+      // 重なり判定のターゲットを type === 'group' に限定
       const targetGroup = allNodes
         .slice()
         .reverse()
