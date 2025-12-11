@@ -7,25 +7,25 @@ services:
       - ./frontend/src/constants:/frontend_constants
     working_dir: /workspace/backend
     command: ["cargo", "watch", "-x", "run"]
-    environment:
-      - RUST_BACKTRACE=1
-      - FRONTEND_ORIGIN=http://localhost:5173
-      - ARCH_DEFS_PATH_DEV=/frontend_constants/architecture_defs.json
+    env_file:
+      - .env
 
   frontend:
     volumes:
       - .:/workspace:cached
-      # node_modules をボリューム化（初回は空）
       - node_modules:/workspace/frontend/node_modules
+    env_file:
+      - .env
+    environment:
+      - VITE_API_SHARE_URL=http://localhost:5173
+      - VITE_API_BASE_URL=http://localhost:8080
     
     working_dir: /workspace/frontend
     
-    # 【修正】起動時に npm install を行い、その後に dev サーバーを起動するシェルスクリプトに変更
-    # これにより、node_modules が空でも自動修復されて起動します
     command: /bin/sh -c "npm install && npm run dev -- --host"
 
 # 名前付きボリュームの定義
 volumes:
   cargo-cache:
   target-cache:
-  node_modules: # frontend用に追加
+  node_modules:
