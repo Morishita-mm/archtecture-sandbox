@@ -2,132 +2,81 @@
 # Development Status Update
 # ==============================================================================
 # 最終更新: 2025-12-11
-# 更新内容: 挑戦状機能(URL共有)、SNSシェア連携、URL短縮API実装
+# 更新内容: コンポーネントのグループ化（SubFlow）、親子関係の制御ロジック実装
 # ==============================================================================
 
 project_status:
-  phase: "Social & Challenge Features Implementation"
-  latest_milestone: "Scenario Sharing via URL & SNS Integration"
+  phase: "Visual Expression Enhancement"
+  latest_milestone: "Component Grouping & Auto-Layout Logic Implemented"
 
 # ------------------------------------------------------------------------------
 # Updated Operational Details (動作仕様の更新)
 # ------------------------------------------------------------------------------
 operational_details:
-  ui_flow_update:
-    description: "トップ画面で「新規開始」か「続きから再開」を選択可能なフローに変更"
-    steps:
-      - "ENTRY_SCREEN":
-          action: "ユーザーは「シナリオカード選択」、「既存プロジェクト読み込み」、または「共有URLからの挑戦」を行う"
-          component: "ScenarioSelectionScreen.tsx"
-          updates: "URLパラメータ(?challenge=...)検知ロジックと、受諾確認用モーダルの追加"
-      - "LOAD_FLOW":
-          trigger: "「既存プロジェクトを読み込む」ボタン（ホバーエフェクト付）"
-          process: "JSONファイル選択 -> Base64デコード -> 構造/バージョン検証 -> 状態復元"
-          restore_target: "チャット履歴, ノード/エッジ, メモ, AI評価結果"
-      - "SAVE_FLOW":
-          trigger: "キャンバス画面右上の保存ボタン"
-          process: "全StateをJSON化 -> Base64エンコード -> ファイル出力"
-          naming_convention: "<シナリオ名>_v<バージョン>.json"
-          version_control: "保存実行後、内部バージョンを自動インクリメント (例: 1.0 -> 2.0)"
-      - "SHARE_FLOW":
-          trigger: "評価結果画面の「結果をシェア」ボタン"
-          process: "シナリオデータをBase64エンコード -> Backend経由でTinyURL短縮 -> X投稿画面起動"
-          data_payload: "隠し要件(Users/Budget)を含む全シナリオ設定"
+  grouping_behavior:
+    description: "VPCやAZなどのグループノードと、その中に配置される子ノードの挙動定義"
+    rules:
+      - "Attach (吸着): グループの上にノードをドロップすると自動的に子要素となる"
+      - "Containment (封じ込め): 子ノードは親グループの枠外にドラッグできない (extent: 'parent')"
+      - "Auto Expansion (自動拡大): 子ノードが親のサイズを超える位置に配置された場合、親が自動的に拡大する"
+      - "Detach (解除): プロパティパネルの「グループから切り離す」ボタンでのみ親子関係を解除可能"
+      - "Resize Limit (縮小制限): 親グループは、子ノードが見切れるサイズまで縮小できない"
 
   new_features:
+    - name: "コンポーネントのグループ化 (SubFlow)"
+      status: "Implemented"
+      details:
+        tech: "React Flow v11 Nesting API (parentNode, extent)"
+        components: "GroupNode (Resizable container), CustomNode (Child)"
+    
+    - name: "親子関係の管理UI"
+      status: "Implemented"
+      details:
+        ui: "プロパティパネルへの「解除ボタン」追加"
+        ux: "ドラッグによる誤解除の防止（ボタン操作に限定）"
+
     - name: "チャレンジモード（シナリオ共有）"
       status: "Implemented"
       details:
         method: "URL Query Parameter (Base64 Encoded JSON)"
         ux: "評価結果画面から発行 -> 受信者はトップ画面で「挑戦状モーダル」経由で開始"
-        privacy: "開始前モーダルでは隠し要件(Users/Budget)を伏せ、難易度とペルソナのみ表示"
 
     - name: "URL短縮機能 (Backend Proxy)"
       status: "Implemented"
       details:
         endpoint: "POST /api/shorten"
-        service: "TinyURL API (No Auth required)"
-        purpose: "SNS投稿時の文字数制限回避とURLの可読性向上"
-
-    - name: "SNSシェア連携"
-      status: "Implemented"
-      details:
-        target: "X (Twitter)"
-        content: "評価スコア、ハッシュタグ、および挑戦用短縮URLを含む投稿テキストの自動生成"
-
-    - name: "ローカルデータ永続化"
-      status: "Implemented"
-      details:
-        method: "Client-side JSON File Download/Upload"
-        security: "Base64 Obfuscation (システムプロンプト隠蔽のため)"
-        scope: "Full State Persistence (Diagram, Chat, Memo, Evaluation Result)"
-
-    - name: "操作ガイド（ヘルプシステム）"
-      status: "Implemented"
-      details:
-        component: "HelpModal.tsx"
-        features: "タブ切り替え式(基本フロー/操作/AIコツ/評価)、React Iconsによる視覚化"
-        access: "ウェルカム画面およびキャンバスヘッダーから常時アクセス可能"
+        service: "TinyURL API"
 
 # ------------------------------------------------------------------------------
 # Recent Changes (直近の変更点)
 # ------------------------------------------------------------------------------
 recent_changes:
-  # --- Challenge Mode & Sharing ---
+  # --- UI / UX / Logic ---
+  - id: feat_grouping_logic
+    category: "Logic"
+    description: "グループノード（VPC等）への吸着判定、親の自動リサイズ、子ノードのドラッグ範囲制限ロジックを実装"
+
+  - id: ux_detach_button
+    category: "UI"
+    description: "プロパティパネルに「グループから切り離す」ボタンを追加し、意図しない親子関係の解除を防止"
+
+  - id: fix_group_resize
+    category: "Logic"
+    description: "GroupNodeが内包する子ノードの座標を計算し、リサイズ時の最小サイズ(minWidth/minHeight)を動的に制限するよう修正"
+
+  # --- Previous Features ---
   - id: feat_challenge_mode
     category: "Feature"
-    description: "シナリオ設定をBase64エンコードしてURLで共有する機能(Challenge Mode)を実装。受信側でのデコードと状態復元ロジックを追加"
+    description: "シナリオ設定をBase64エンコードしてURLで共有する機能(Challenge Mode)を実装"
 
   - id: feat_url_shortener_api
     category: "Backend"
-    description: "TinyURL APIを叩くプロキシエンドポイント(POST /api/shorten)をRustバックエンドに追加。CORS回避とURL短縮を実現"
-
-  - id: ux_share_buttons
-    category: "UI/UX"
-    description: "評価パネル(EvaluationPanel)に「リンクコピー」「結果をシェア(X)」ボタンを追加"
-
-  - id: ux_challenge_modal
-    category: "UI/UX"
-    description: "共有URLアクセス時に表示される「挑戦状モーダル」を実装。ネタバレ防止のため詳細パラメータを隠蔽して表示"
-
-  # --- Logic / Backend Integration ---
-  - id: feat_evaluation_context
-    category: "Logic"
-    description: "AI評価リクエスト時に、コンポーネントの種類だけでなく「ユーザー定義名(label)」と「詳細メモ(description)」を含めるよう修正。AIの評価精度向上"
-
-  - id: fix_color_sync
-    category: "Logic"
-    description: "architecture_defs.json の定義と nodeStyles.ts のキー不一致を解消し、コンポーネントの色が正しく反映されない問題を修正"
-
-  - id: feat_dynamic_styles
-    category: "Refactor"
-    description: "コンポーネントの配色をハードコードから architecture_defs.json を参照する動的生成に変更。定義ファイルの一元管理化"
-
-  # --- UI / UX Improvements ---
-  - id: ux_header_refactor
-    category: "Refactor"
-    description: "ArchitectureCanvasからヘッダー部分を Header.tsx として分離。共通デザイン化と保守性向上"
-
-  - id: ux_rich_welcome
-    category: "UI/UX"
-    description: "ウェルカム画面のデザイン刷新。Google Fonts(Montserrat)の導入、タイトル装飾、フッター(GitHub/Qiitaリンク)の追加"
-
-  - id: ux_node_handles
-    category: "UI/UX"
-    description: "CustomNodeの接続ポイント(Handle)を整理。左右の未使用ハンドルを削除し、上下のみに限定して誤操作を防止"
-
-  - id: ux_eval_panel_layout
-    category: "UI/UX"
-    description: "評価パネルの下部パディングを調整し、スクロール時にコンテンツが見切れる問題を解消"
-
-  - id: ux_local_asset
-    category: "Asset"
-    description: "Qiitaアイコンなどの外部リソースをローカルアセットとして配置し、リンク切れリスクとパフォーマンスを改善"
+    description: "TinyURL APIを叩くプロキシエンドポイントをRustバックエンドに追加"
 
 # ------------------------------------------------------------------------------
 # Updated Limitations (制約事項の更新)
 # ------------------------------------------------------------------------------
 limitations_update:
-  - name: "データ共有"
-    status: "Hybrid"
-    detail: "設計図の共有はJSONファイルの手動送付が必要だが、シナリオ（お題）の共有はURL経由で可能になった"
+  - name: "グループのネスト"
+    status: "Restricted"
+    detail: "現状では「グループの中にグループを入れる」多重ネストは複雑化回避のため禁止している"
